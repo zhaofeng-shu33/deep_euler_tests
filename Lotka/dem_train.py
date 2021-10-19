@@ -148,7 +148,7 @@ if args.load_model:
 # ----- ----- ----- ----- ----- -----
 # Data loading
 # ----- ----- ----- ----- ----- -----
-data_path = os.path.join('lotka_data.hdf5')
+data_path = os.path.join('lotka_data2.hdf5')
 f = h5py.File(data_path, 'r')
 keys = list(f.keys())
 print(keys)
@@ -352,7 +352,7 @@ if not args.test:
     
 
 # ----- ----- ----- ----- ----- -----
-#Model Save
+# Model Save
 # ----- ----- ----- ----- ----- -----
 
 traced_model = 0
@@ -391,7 +391,7 @@ if not args.test:
     print("Saved model.",file=logfile)
     print("Saved model.")
 
-    #trace model to be used by C/C++
+    # trace model to be used by C/C++
     if args.early_stop:
         model.load_state_dict(best_model_state_dict)
         model.eval()
