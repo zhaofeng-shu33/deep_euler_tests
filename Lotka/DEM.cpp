@@ -15,10 +15,11 @@ using namespace std;
 //const int N = 16;
 //const int N_z = N / 2 - 1;
 const int nn_inputs = 4;
-const int nn_outputs = 2;
+const int nn_outputs = 2; // output dimension
 c10::TensorOptions global_tensor_op;
 
 string file_name = "../lotka_dem.txt";
+string file_name_normal_euler = "../lotka_euler.txt";
 string model_file = "../traced_model_e2500_2107071955.pt";
 string output_log = "../output_compare.txt";
 
@@ -181,7 +182,7 @@ class ODESolver
 {
 public:
 
-	ODESolver(int order) :order(order) {};
+	ODESolver(int order): order(order) {};
 
 	bool setInitialCondition(double* conds, double at) {
 		begin_t = at;
@@ -233,6 +234,39 @@ public:
 		free(vector);
 	}
 
+	// disable residue approximation
+	void solve_normal(lotka& lot, ostream& os) {
+
+		double* vector = (double*)malloc(sizeof(double) * order);
+		for (int u = 0; u < order; u++) {
+			vector[u] = init_conds[u];
+		}
+
+		//preparations
+		double* k = (double*)malloc(sizeof(double) * order);
+		double t = begin_t;
+		int l = 0;
+		while (l < max_l) {
+
+			for (int j = 0; j < order; j++) {
+				k[j] = vector[j];
+			}
+			lot(t, k);
+			for (int j = 0; j < order; j++) {
+				vector[j] = vector[j] + delta_t * k[j];
+			}
+			l++;
+			t += delta_t;
+			os << t;
+			for (int i = 0; i < order; i++) {
+				os << " " << vector[i];
+			}
+			os << endl;
+		}
+		free(k);
+		free(vector);
+	}
+
 	~ODESolver(){
 		free(init_conds);
 	}
@@ -250,7 +284,11 @@ private:
 };
 
 
-
+void setup_ofstream(ofstream& ofs) {
+	if(!ofs.is_open())exit(-1);
+	ofs.precision(17);
+	ofs.flags(ios::scientific);
+}
 
 int main() {
 	global_tensor_op = torch::TensorOptions().dtype(torch::kFloat64);
@@ -259,10 +297,10 @@ int main() {
 	double* x = new double[nn_outputs]{ 2.0, 1.0 };
 
 	ofstream ofs(file_name);
-	if(!ofs.is_open())exit(-1);
-	ofs.precision(17);
-	ofs.flags(ios::scientific);
+	setup_ofstream(ofs);
 	cout << "Writing file: " << file_name << endl;
+	ofstream ofs_2(file_name_normal_euler);
+	setup_ofstream(ofs_2);
 
 	//initial conditions
 	std::array<value_type, nn_inputs> initial_inputs = { 1e-5, 0.0, 2.0, 1.0};
@@ -273,17 +311,23 @@ int main() {
 	ODESolver solver(nn_outputs);
 	solver.setInitialCondition(x, 0.0);
 	solver.setTimeStep(0.1);
-	solver.setStepNumber(250);
+	solver.setStepNumber(500);
 	//cin.get();
 	cout << "Solving..." << endl;
 	auto t1 = chrono::high_resolution_clock::now();
 	solver.solve(bubi, ofs);
 	auto t2 = chrono::high_resolution_clock::now();
-	cout << "Time (ms):" << std::chrono::duration_cast<std::chrono::milliseconds>(t2 - t1).count() << endl;
-	
+	cout << "DEM Time (ms):" << std::chrono::duration_cast<std::chrono::milliseconds>(t2 - t1).count() << endl;
+
+	t1 = chrono::high_resolution_clock::now();
+	solver.solve_normal(bubi, ofs_2);
+	t2 = chrono::high_resolution_clock::now();
+	cout << "EM Time (ms):" << std::chrono::duration_cast<std::chrono::milliseconds>(t2 - t1).count() << endl;
+
 	ofs.flush();
 	ofs.close();
-
+	ofs_2.flush();
+	ofs_2.close();
 	cout << "Ready"<< endl;
 	return 0;
 }
