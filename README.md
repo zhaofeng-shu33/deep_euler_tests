@@ -5,3 +5,9 @@ Read about the Deep Euler Method in the paper:
 [Deep Euler method: solving ODEs by approximating the local truncation error of the Euler method](https://arxiv.org/abs/2003.09573).
 
 The same scheme was proposed in the paper [Hypersolvers: Toward Fast Continuous-Depth Models](https://papers.nips.cc/paper/2020/hash/f1686b4badcf28d33ed632036c7ab0b8-Abstract.html)
+
+## Build instructions on windows
+* Open Developer Command Prompt for VS2019
+* Specify torch dir to cmake `Torch_DIR=xxx` (containing `TorchConfig.cmake`), provided by miniconda.
+* `msbuild DEM.sln -p:Configuration=Release`
+
