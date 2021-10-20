@@ -16,9 +16,10 @@ def lotka(t, x):
     y[1] = -x[1] + x[0]*x[1]
     return y
 
-sol_euler = scipy.integrate.solve_ivp(lotka, [0, 50], [2.0, 1.0], step=0.1, method=DeepEuler, disable_residue=True)
-sol_dem = scipy.integrate.solve_ivp(lotka, [0, 50], [2.0, 1.0], step=0.1, method=DeepEuler, model_file='training/model_e1_2110191109.pt')
-sol = scipy.integrate.solve_ivp(lotka, [0, 50], [2.0, 1.0], rtol=1e-6, atol=1e-6)
+end_interval = 25
+sol_euler = scipy.integrate.solve_ivp(lotka, [0, end_interval], [2.0, 1.0], step=0.1, method=DeepEuler, disable_residue=True)
+sol_dem = scipy.integrate.solve_ivp(lotka, [0, end_interval], [2.0, 1.0], step=0.1, method=DeepEuler, model_file='training/model_e20_2110201533.pt')
+sol = scipy.integrate.solve_ivp(lotka, [0, end_interval], [2.0, 1.0], rtol=1e-6, atol=1e-6)
 
 
 

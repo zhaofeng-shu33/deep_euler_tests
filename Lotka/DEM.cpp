@@ -7,6 +7,7 @@
 #include <vector>
 #include <string>
 #include <chrono>
+#include <regex>
 
 #include <torch/script.h>
 
@@ -20,7 +21,8 @@ c10::TensorOptions global_tensor_op;
 
 string file_name = "../lotka_dem.txt";
 string file_name_normal_euler = "../lotka_euler.txt";
-string model_file = "../traced_model_e2500_2107071955.pt";
+string time_counting_file_name = "../clock.txt";
+string model_file = "../../training/traced_model_e20_2110201533.pt";
 string output_log = "../output_compare.txt";
 
 typedef double value_type;
@@ -127,7 +129,7 @@ public:
 			std::cerr << "Error loading the model: " << e.what() << endl;
 			exit(-1);
 		}
-		cout << "43" << endl;
+		std::cout << "43" << endl;
 		/*ifstream in(scaler_file);
 		if (!in) {
 			std::cerr << "Error loading the scalers." << endl;
@@ -155,7 +157,7 @@ public:
 
 		//scaling
 		torch::Tensor scaled = inputs; //std_transf(inputs);
-		//cout << scaled << endl;
+		//std::cout << scaled << endl;
 		std::vector<torch::jit::IValue> inps;
 		inps.push_back(scaled);
 		//evaluating
@@ -292,42 +294,56 @@ void setup_ofstream(ofstream& ofs) {
 
 int main() {
 	global_tensor_op = torch::TensorOptions().dtype(torch::kFloat64);
-	cout << "Lotka Volterra with metamodel started\n" << setprecision(17) << endl;
+	std::cout << "Lotka Volterra with metamodel started\n" << setprecision(17) << endl;
 
 	double* x = new double[nn_outputs]{ 2.0, 1.0 };
 
-	ofstream ofs(file_name);
-	setup_ofstream(ofs);
-	cout << "Writing file: " << file_name << endl;
-	ofstream ofs_2(file_name_normal_euler);
-	setup_ofstream(ofs_2);
+	double dem_step_list[] = {0.1, 0.05, 0.01, 0.005};
+	double euler_step_list[] = { 0.002, 0.001, 0.0005, 0.0002};
+	int step_list_length = (sizeof(dem_step_list) / sizeof(*dem_step_list));
+	std::regex _regex(".txt");
+	ofstream clock_of(time_counting_file_name);
+	double t_stop = 25.0;
+	for (int i = 0; i < step_list_length; i++) {
+		std::string file_name_i = std::regex_replace(file_name, _regex, std::to_string(i) + ".txt");
+		std::string file_name_normal_euler_i = std::regex_replace(file_name_normal_euler, _regex, std::to_string(i) + ".txt");
 
-	//initial conditions
-	std::array<value_type, nn_inputs> initial_inputs = { 1e-5, 0.0, 2.0, 1.0};
-	
-	double t_start = 0.0;
-	lotka bubi(initial_inputs);
-	
-	ODESolver solver(nn_outputs);
-	solver.setInitialCondition(x, 0.0);
-	solver.setTimeStep(0.1);
-	solver.setStepNumber(500);
-	//cin.get();
-	cout << "Solving..." << endl;
-	auto t1 = chrono::high_resolution_clock::now();
-	solver.solve(bubi, ofs);
-	auto t2 = chrono::high_resolution_clock::now();
-	cout << "DEM Time (ms):" << std::chrono::duration_cast<std::chrono::milliseconds>(t2 - t1).count() << endl;
+		ofstream ofs(file_name_i);
+		setup_ofstream(ofs);
+		std::cout << "Writing file: " << file_name << endl;
+		ofstream ofs_2(file_name_normal_euler_i);
+		setup_ofstream(ofs_2);
 
-	t1 = chrono::high_resolution_clock::now();
-	solver.solve_normal(bubi, ofs_2);
-	t2 = chrono::high_resolution_clock::now();
-	cout << "EM Time (ms):" << std::chrono::duration_cast<std::chrono::milliseconds>(t2 - t1).count() << endl;
-
-	ofs.flush();
-	ofs.close();
-	ofs_2.flush();
-	ofs_2.close();
-	cout << "Ready"<< endl;
+		//initial conditions
+		std::array<value_type, nn_inputs> initial_inputs = { 1e-5, 0.0, 2.0, 1.0};
+		
+		double t_start = 0.0;
+		lotka bubi(initial_inputs);
+		
+		ODESolver solver(nn_outputs);
+		solver.setInitialCondition(x, 0.0);
+		solver.setTimeStep(dem_step_list[i]);
+		solver.setStepNumber(int(t_stop/ dem_step_list[i]));
+		//cin.get();
+		std::cout << "Solving..." << endl;
+		auto t1 = chrono::high_resolution_clock::now();
+		solver.solve(bubi, ofs);
+		auto t2 = chrono::high_resolution_clock::now();
+		// std::cout << "DEM Time (ms):" << std::chrono::duration_cast<std::chrono::milliseconds>(t2 - t1).count() << endl;
+		clock_of << std::chrono::duration_cast<std::chrono::milliseconds>(t2 - t1).count();
+		solver.setTimeStep(euler_step_list[i]);
+		solver.setStepNumber(int(t_stop / euler_step_list[i]));
+		t1 = chrono::high_resolution_clock::now();
+		solver.solve_normal(bubi, ofs_2);
+		t2 = chrono::high_resolution_clock::now();
+		// std::cout << "EM Time (ms):" << std::chrono::duration_cast<std::chrono::milliseconds>(t2 - t1).count() << endl;
+		clock_of << ' ' << std::chrono::duration_cast<std::chrono::milliseconds>(t2 - t1).count() << endl;
+		ofs.flush();
+		ofs.close();
+		ofs_2.flush();
+		ofs_2.close();
+	}
+	clock_of.close();
+	std::cout << "Ready"<< endl;
 	return 0;
 }
