@@ -108,4 +108,8 @@ def euler_truncation_error(arr, output_size):
         dt_m = np.column_stack((dt_m,dt))
     Y = np.reciprocal(dt_m*dt_m)*(arr[1:,1:output_size+1] - arr[:-1,1:output_size+1] - dt_m*arr[:-1, output_size+1:])
     return X,Y
-    
+
+def l2_error(true_sol, sol_data):
+    t_list = sol_data[:, 0]
+    y_true = true_sol.sol(t_list)
+    return np.sqrt(np.average(np.linalg.norm(sol_data[:, 1:] - y_true.T, axis=1) ** 2 / 2))

@@ -6,7 +6,7 @@ import matplotlib.pyplot as plt
 import scipy.integrate
 import h5py
 from DEM import DeepEuler
-
+from utils.data_utils import l2_error
 
 
 # %%
@@ -17,21 +17,29 @@ def lotka(t, x):
     return y
 
 end_interval = 25
-sol_euler = scipy.integrate.solve_ivp(lotka, [0, end_interval], [2.0, 1.0], step=0.1, method=DeepEuler, disable_residue=True)
-sol_dem = scipy.integrate.solve_ivp(lotka, [0, end_interval], [2.0, 1.0], step=0.1, method=DeepEuler, model_file='training/model_e20_2110201533.pt')
-sol = scipy.integrate.solve_ivp(lotka, [0, end_interval], [2.0, 1.0], rtol=1e-6, atol=1e-6)
-
-
-
+dem_step_list = [0.1, 0.05, 0.01, 0.005]
+euler_step_list = [0.002, 0.001, 0.0005, 0.0002]
+sol = scipy.integrate.solve_ivp(lotka, [0, end_interval], [2.0, 1.0], rtol=1e-6, atol=1e-6, dense_output=True)
+euler_nfev = []
+euler_error = []
+dem_error = []
+dem_nfev = []
+for i in range(4):
+    sol_euler = scipy.integrate.solve_ivp(lotka, [0, end_interval], [2.0, 1.0], step=euler_step_list[i], method=DeepEuler, disable_residue=True)
+    sol_dem = scipy.integrate.solve_ivp(lotka, [0, end_interval], [2.0, 1.0], step=dem_step_list[i], method=DeepEuler, model_file='training/model_e20_2110201533.pt')
+    euler_nfev.append(sol_euler.nfev)
+    euler_error.append(l2_error(sol, np.hstack((sol_euler.t.reshape((-1, 1)), sol_euler.y.T))))
+    dem_error.append(l2_error(sol, np.hstack((sol_dem.t.reshape((-1, 1)), sol_dem.y.T))))
+    dem_nfev.append(10 * sol_dem.nfev)
 
 
 # %%
-plt.figure(num="Comparison")
-plt.plot(sol.t,sol.y[0,:], lw=0.5, label="Dopri")
-plt.plot(sol_euler.t, sol_euler.y[0, :], lw=0.5, label="Euler")
-plt.plot(sol_dem.t,sol_dem.y[0, :], lw=0.5, label="DEM")
-plt.xlabel("t")
-plt.ylabel("x1")
+# plt.figure(num="Comparison")
+# plt.plot(sol.t,sol.y[0,:], lw=0.5, label="Dopri")
+plt.scatter(euler_error, np.log(euler_nfev), label="Euler")
+plt.scatter(dem_error,  np.log(dem_nfev), label="DEM")
+# plt.xlabel("t")
+plt.ylabel("log(nfev)")
 plt.legend()
 plt.show()
 
