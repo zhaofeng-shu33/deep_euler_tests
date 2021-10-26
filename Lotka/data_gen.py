@@ -44,9 +44,9 @@ def get_train_data(t_max=15, eval_num=1000, initial_value=[2, 1], theta=[1.0, 1.
     l = arr.shape[0]
     b = 1
     
-    sum = 0
-    for i in range(b, n):
-        sum = sum + l - i - 1
+    sum = l - 1
+    # for i in range(b, n):
+    #     sum = sum + l - i - 1
 
     with h5py.File(path_to_hdf, 'w') as f:
         f.create_dataset(
@@ -72,15 +72,15 @@ def get_train_data(t_max=15, eval_num=1000, initial_value=[2, 1], theta=[1.0, 1.
             x = np.column_stack((x[:,0] - x[:,1],x[:,2],x[:,3]))
         X[begin:end,:] = x
         Y[begin:end,:] = y
-        for i in range(b + 1, n):
-            for j in range(i):
-                x,y = euler_truncation_error(arr[j::i, :], 2)
-                if dt:
-                    x = np.column_stack((x[:,0] - x[:,1],x[:,2],x[:,3]))
-                begin = end
-                end = begin + x.shape[0]
-                X[begin:end, :] = x
-                Y[begin:end, :] = y
+        # for i in range(b + 1, n):
+        #     for j in range(i):
+        #         x,y = euler_truncation_error(arr[j::i, :], 2)
+        #         if dt:
+        #             x = np.column_stack((x[:,0] - x[:,1],x[:,2],x[:,3]))
+        #         begin = end
+        #         end = begin + x.shape[0]
+        #         X[begin:end, :] = x
+        #         Y[begin:end, :] = y
 
 if __name__ == '__main__':
     get_train_data()
