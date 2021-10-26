@@ -1,16 +1,12 @@
 #!/usr/bin/env python
 # coding: utf-8
+# generating data from a range of problems
 
 
-
-
+import argparse
 import numpy as np
-import matplotlib.pyplot as plt
 import scipy.integrate
 import h5py
-
-from utility import lotka
-
 
 def euler_truncation_error(arr, output_size): 
     #t0 x1 x2 x3 z1 ... z8 dx1 dx2 dx3 dz1 ... dz8
@@ -30,7 +26,7 @@ class LotkaVolterraProblem:
         self.theta_range = [[0.5, theta_max], [0.5, theta_max], [0.5, theta_max], [0.5, theta_max]]
         U_MAX = 10
         self.u_0_range = [[0.01, U_MAX], [0.01, U_MAX]]
-        self.h_log_range = [-5, -1]
+        # self.h_log_range = [-5, -1]
         self.t_max_range = [1.0, 15]
         self.input_dim = 8
         self.u_0 = [1.0, 1.0] # used for plot
@@ -47,7 +43,7 @@ class LotkaVolterraProblem:
         parameter_range.extend(self.theta_range)
         parameter_range.extend(self.u_0_range)
         parameter_range.append(self.t_max_range)
-        parameter_range.append(self.h_log_range)
+        # parameter_range.append(self.h_log_range)
         return parameter_range
 
     def setup(self):
@@ -55,6 +51,25 @@ class LotkaVolterraProblem:
             self.parameter_range = self.get_parameter_range()
             self.theta_dim = len(self.theta_range)
             self.u_0_dim = len(self.u_0_range)
+
+    @staticmethod
+    def get_train_data(theta, t_max, u_0, eval_num=1000):
+        end = t_max
+        output_size = 2
+        np.random.seed = 42
+        t = np.random.rand(eval_num + 1) * end
+        t = np.sort(t)
+        lotka_embedded = lambda t, y: LotkaVolterraProblem.ode_func(t, y, u_0, theta)
+        sol = scipy.integrate.solve_ivp(lotka_embedded, [0, end], u_0, t_eval=t, rtol=1e-6, atol=1e-6)
+
+        dydt = np.array(lotka_embedded(t, sol.y)) # needed to compute the residue error
+
+        # dt = False # whether to use absolute time or time steps
+
+        arr = np.column_stack((t, np.array(sol.y).T, dydt.T))
+        x, y = euler_truncation_error(arr, output_size)
+
+        return (x, y)
 
     def get_batch(self, size=64, eval_num=1000, verbose=False):
         '''
@@ -77,7 +92,7 @@ class LotkaVolterraProblem:
             theta = para_array[0:self.theta_dim, j]
             u_0 = para_array[self.theta_dim:(self.theta_dim + self.u_0_dim), j]
             t_max = para_array[self.theta_dim + self.u_0_dim, j]
-            _x, _y = get_train_data(theta, t_max, u_0, eval_num=eval_num)
+            _x, _y = self.get_train_data(theta, t_max, u_0, eval_num=eval_num)
             batch_x[j * eval_num : (j + 1) * eval_num, :(output_size + 2)] = _x
             # expand the columns of _x using para_array[:, j] (broadcasting)
             batch_x[j * eval_num : (j + 1) * eval_num, (output_size + 2):] = para_array[:, j]
@@ -85,63 +100,31 @@ class LotkaVolterraProblem:
             j += 1
         return batch_x.astype(np.float32), batch_y.astype(np.float32)
 
-def get_train_data(theta, t_max, u_0, eval_num=1000):
-    end = t_max
-    output_size = 2
-    np.random.seed = 42
-    t = np.random.rand(eval_num) * end
-    t = np.sort(t)
-    lotka_embedded = lambda t, y: lotka(t, y, theta)
-    sol = scipy.integrate.solve_ivp(lotka_embedded, [0, end], u_0, t_eval=t, rtol=1e-6, atol=1e-6)
-
-    dydt = lotka_embedded(t, sol.y) # needed to compute the residue error
-
-    path_to_hdf = 'lotka_data2.hdf5'
-    # dt = False # whether to use absolute time or time steps
-
-    arr = np.column_stack((t, np.array(sol.y).T, dydt.T))
-
-    l = arr.shape[0]
-    b = 1
-    
-    sum = l - 1
-    # for i in range(b, n):
-    #     sum = sum + l - i - 1
-    x, y = euler_truncation_error(arr, output_size)
-    # if dt: 
-    #     x = np.column_stack((x[:,0] - x[:,1],x[:,2],x[:,3]))
-    return (x, y)
-    # with h5py.File(path_to_hdf, 'w') as f:
-    #     f.create_dataset(
-    #         str('lotka_X'),
-    #         (sum, output_size + 2),
-    #         dtype   = np.float64,
-    #         compression     = 'gzip',
-    #         compression_opts= 6
-    #         )
-    #     f.create_dataset(
-    #         str('lotka_Y'),
-    #         (sum, 2),
-    #         dtype   = np.float64,
-    #         compression     = 'gzip',
-    #         compression_opts= 6
-    #         )
-    #     begin = 0
-    #     end = l - 1
-    #     X = f['lotka_X']
-    #     Y = f['lotka_Y']
-
-    #     X[begin:end,:] = x
-    #     Y[begin:end,:] = y
-        # for i in range(b + 1, n):
-        #     for j in range(i):
-        #         x,y = euler_truncation_error(arr[j::i, :], 2)
-        #         if dt:
-        #             x = np.column_stack((x[:,0] - x[:,1],x[:,2],x[:,3]))
-        #         begin = end
-        #         end = begin + x.shape[0]
-        #         X[begin:end, :] = x
-        #         Y[begin:end, :] = y
+def save_train_data(path_to_hdf, x, y):
+    with h5py.File(path_to_hdf, 'w') as f:
+        f.create_dataset(
+            str('lotka_X'),
+            x.shape,
+            dtype   = np.float64,
+            compression     = 'gzip',
+            compression_opts= 6
+            )
+        f.create_dataset(
+            str('lotka_Y'),
+            y.shape,
+            dtype   = np.float64,
+            compression     = 'gzip',
+            compression_opts= 6
+            )
+        f['lotka_X'][:, :] = x
+        f['lotka_Y'][:, :] = y
 
 if __name__ == '__main__':
-    get_train_data()
+    parser = argparse.ArgumentParser()
+    parser.add_argument('--size', type=int, default=64)
+    parser.add_argument('--eval_num', type=int, default=1000)
+    args = parser.parse_args()
+    path_to_hdf = f'lotka_range_data_{args.size}_{args.eval_num}.hdf5'
+    problem = LotkaVolterraProblem()
+    x, y = problem.get_batch(verbose=True, size=args.size, eval_num=args.eval_num)
+    save_train_data(path_to_hdf, x, y)

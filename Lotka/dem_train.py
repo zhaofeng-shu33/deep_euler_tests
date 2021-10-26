@@ -26,6 +26,16 @@ torch.set_default_dtype(torch.float64)
 # ----- ----- ----- ----- ----- -----
 parser  = argparse.ArgumentParser()
 parser.add_argument(
+    '--data',
+    default = 'lotka_data2.hdf5',
+    )
+parser.add_argument(
+    '--lr',
+    type=float,
+    default=3e-4,
+    )
+
+parser.add_argument(
     '--batch',
     default = '1000',
     type    = int,
@@ -148,7 +158,7 @@ if args.load_model:
 # ----- ----- ----- ----- ----- -----
 # Data loading
 # ----- ----- ----- ----- ----- -----
-data_path = os.path.join('lotka_data2.hdf5')
+data_path = os.path.join(args.data)
 f = h5py.File(data_path, 'r')
 keys = list(f.keys())
 print(keys)
@@ -230,7 +240,7 @@ if args.load_model:
 # ----- ----- ----- ----- ----- -----
 model = model.to(device)
 loss    = nn.MSELoss()
-optim   = torch.optim.Adam(model.parameters(), lr=3e-4, eps=1e-8)#, weight_decay=1e-7)
+optim   = torch.optim.Adam(model.parameters(), lr=args.lr, eps=1e-8)#, weight_decay=1e-7)
 if args.load_model:
     optim.load_state_dict(model_checkpoint['optimizer_state_dict'])
 
