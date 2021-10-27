@@ -262,7 +262,7 @@ best_optim_state_dict = 0
 best_epoch = 0
 for num_epoch in range(args.epoch):
     if args.print_epoch and num_epoch % args.print_epoch == 0:
-        print(num_epoch+start_epoch)
+        print('epoch', num_epoch + start_epoch)
     model.train()
     total_loss  = 0
     len_dataset = 0
@@ -290,8 +290,7 @@ for num_epoch in range(args.epoch):
     vld_loss    /= len(vld_ldr.dataset)
     vld_loss_arr[num_epoch] = vld_loss
     if args.monitor==2 or (args.print_losses and num_epoch%args.print_losses==0):
-        print(total_loss)
-        print(vld_loss)
+        print('total loss', total_loss, 'validation loss', vld_loss)
     if not args.test:
         print(total_loss, file=logfile)
         print(vld_loss, file=logfile)
@@ -303,21 +302,22 @@ for num_epoch in range(args.epoch):
         plt.yscale('log')
         if num_epoch!= 0: plt.xlim([start_epoch, start_epoch+num_epoch])
         plt.pause(0.01)
-        
-    if args.early_stop and vld_loss < vld_loss_best:
-        vld_loss_best = vld_loss
-        best_model_state_dict = deepcopy(model.state_dict())
-        best_optim_state_dict = deepcopy(optim.state_dict())
-        best_epoch = num_epoch
-    else:
-        if num_epoch-best_epoch == 50:
-            if not args.test:
-                print("Early stopped", file=logfile)
-            print("Early stopped")
-            break
+
+    if args.early_stop:
+        if vld_loss < vld_loss_best:
+            vld_loss_best = vld_loss
+            best_model_state_dict = deepcopy(model.state_dict())
+            best_optim_state_dict = deepcopy(optim.state_dict())
+            best_epoch = num_epoch
+        else:
+            if num_epoch-best_epoch == 50:
+                if not args.test:
+                    print("Early stopped", file=logfile)
+                print("Early stopped")
+                break
     
 if not args.test:
-    print("Training ready, epochs: " + str(start_epoch) + "..." + str(start_epoch+learned_epoch),file=logfile)
+    print("Training ready, epochs: " + str(start_epoch) + "..." + str(start_epoch + learned_epoch), file=logfile)
 
 end_time = datetime.now()
 duration = end_time - begin_time

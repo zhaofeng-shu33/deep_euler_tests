@@ -15,23 +15,22 @@ def euler_truncation_error(arr, output_size):
     X = np.column_stack((arr[1:,0], arr[:-1,:1+output_size])) #t1 t0 x1(0) x2(0) x3(0) z(0)
     dt_m = np.copy(dt)
     for _ in range(1, output_size):
-        dt_m = np.column_stack((dt_m,dt))
+        dt_m = np.column_stack((dt_m, dt))
     Y = np.reciprocal(dt_m * dt_m) * (arr[1:,1:output_size+1] - arr[:-1,1:output_size+1] - dt_m * arr[:-1, output_size+1:])
     return X, Y
 
 class LotkaVolterraProblem:
     def __init__(self):
         super().__init__()
-        theta_max = 2
-        self.theta_range = [[0.5, theta_max], [0.5, theta_max], [0.5, theta_max], [0.5, theta_max]]
-        U_MAX = 10
-        self.u_0_range = [[0.01, U_MAX], [0.01, U_MAX]]
+        self.theta_range = [[1.0, 2.0], [0.5, 1.5], [2.0, 4.0], [0.5, 1.5]]
+        U_MAX = 2
+        self.u_0_range = [[0.5, U_MAX], [0.5, U_MAX]]
         # self.h_log_range = [-5, -1]
         self.t_max_range = [1.0, 15]
         self.input_dim = 8
         self.u_0 = [1.0, 1.0] # used for plot
         self.t_max = 10.0 # used for plot
-        self.theta = [1.5,1,3,1]
+        self.theta = [1.5, 1, 3, 1]
 
     @staticmethod
     def ode_func(t, y, u_0, theta):
