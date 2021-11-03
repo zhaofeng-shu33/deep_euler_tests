@@ -246,7 +246,7 @@ if args.load_model:
 
 total_loss_arr  = np.zeros(args.epoch)
 vld_loss_arr    = np.zeros(args.epoch)
-epochs          = np.linspace(start_epoch,start_epoch+args.epoch-1,args.epoch)
+epochs          = np.linspace(start_epoch, start_epoch + args.epoch - 1, args.epoch)
 
 if args.monitor==2: 
     plt.ion()
@@ -265,7 +265,6 @@ for num_epoch in range(args.epoch):
         print('epoch', num_epoch + start_epoch)
     model.train()
     total_loss  = 0
-    len_dataset = 0
     for batch in trn_ldr:
         x,y = batch
         x   = x.to(device)
@@ -273,9 +272,10 @@ for num_epoch in range(args.epoch):
         optim.zero_grad()
         out     = model(x)
         trn_loss= loss(out, y)
+        total_loss  += trn_loss.item() * len(x)
         trn_loss.backward()
         optim.step()
-        total_loss  += trn_loss.item() * len(x)
+        
     total_loss  /= len(trn_ldr.dataset)
     total_loss_arr[num_epoch] = total_loss
     learned_epoch += 1
