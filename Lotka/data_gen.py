@@ -22,15 +22,15 @@ def euler_truncation_error(arr, output_size):
 class LotkaVolterraProblem:
     def __init__(self):
         super().__init__()
-        self.theta_range = [[1.0, 2.0], [0.5, 1.5], [2.0, 4.0], [0.5, 1.5]]
+        self.theta_range = [[0.5, 1.5], [0.5, 1.5], [0.5, 1.5], [0.5, 1.5]]
         U_MAX = 2
-        self.u_0_range = [[0.5, U_MAX], [0.5, U_MAX]]
+        self.u_0_range = [[1.5, 2.5], [0.8, U_MAX]]
         # self.h_log_range = [-5, -1]
         self.t_max_range = [1.0, 15]
         self.input_dim = 8
-        self.u_0 = [1.0, 1.0] # used for plot
+        self.u_0 = [2.0, 1.0] # used for plot
         self.t_max = 10.0 # used for plot
-        self.theta = [1.5, 1, 3, 1]
+        self.theta = [1.0, 1, 1, 1]
 
     @staticmethod
     def ode_func(t, y, u_0, theta):
@@ -59,7 +59,8 @@ class LotkaVolterraProblem:
         t = np.random.rand(eval_num + 1) * end
         t = np.sort(t)
         lotka_embedded = lambda t, y: LotkaVolterraProblem.ode_func(t, y, u_0, theta)
-        sol = scipy.integrate.solve_ivp(lotka_embedded, [0, end], u_0, t_eval=t, rtol=1e-6, atol=1e-6)
+
+        sol = scipy.integrate.solve_ivp(lotka_embedded, [0, end], u_0, t_eval=t, rtol=1e-6, atol=1e-9)
 
         dydt = np.array(lotka_embedded(t, sol.y)) # needed to compute the residue error
 
@@ -82,7 +83,7 @@ class LotkaVolterraProblem:
         for i, para in enumerate(self.parameter_range):
             para_array[i, :] = np.random.uniform(para[0], para[1], size)
         output_size = len(self.u_0)
-        batch_x = np.zeros([size * eval_num, len(self.parameter_range) + output_size + 2])
+        batch_x = np.zeros([size * eval_num, len(self.parameter_range) + output_size + 1])
         batch_y = np.zeros([size * eval_num, output_size]) # pre-allocation of the space
         j = 0
         while j < size:
@@ -94,7 +95,7 @@ class LotkaVolterraProblem:
             _x, _y = self.get_train_data(theta, t_max, u_0, eval_num=eval_num)
             batch_x[j * eval_num : (j + 1) * eval_num, :(output_size + 2)] = _x
             # expand the columns of _x using para_array[:, j] (broadcasting)
-            batch_x[j * eval_num : (j + 1) * eval_num, (output_size + 2):] = para_array[:, j]
+            batch_x[j * eval_num : (j + 1) * eval_num, (output_size + 2):] = para_array[:-1, j]
             batch_y[j * eval_num : (j + 1) * eval_num, :] = _y
             j += 1
         return batch_x.astype(np.float32), batch_y.astype(np.float32)

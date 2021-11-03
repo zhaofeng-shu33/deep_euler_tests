@@ -66,5 +66,5 @@ class SimpleMLP(nn.Module):
         x   = self.act(self.l4(x))
         x   = self.act(self.l5(x))
         x   = self.act(self.l6(x))
-        x   = self.act(self.l_out(x))
+        x   = self.l_out(x)
         return x
