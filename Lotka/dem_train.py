@@ -4,7 +4,7 @@ import argparse
 import os
 import h5py
 from datetime import datetime
-from copy import deepcopy                       
+from copy import deepcopy
 import numpy as np
 from sklearn.preprocessing import StandardScaler, MinMaxScaler
 from sklearn.model_selection import train_test_split
@@ -26,10 +26,11 @@ torch.set_default_dtype(torch.float64)
 # Command line arguments
 # ----- ----- ----- ----- ----- -----
 parser = argparse.ArgumentParser()
-parser.add_argument('--data', default='lotka_data2.hdf5')
+parser.add_argument('--generalized_training', default=False, const=True, nargs='?')
 parser.add_argument('--lr', type=float, default=3e-4)
 parser.add_argument('--batch', default='1000', type=int, help="Batch size. 0 means training set length.")
 parser.add_argument('--epoch', default='1',type=int, help="Number of epochs to train.")
+parser.add_argument('--model_type', default='simple_mlp', choices=['simple_mlp', 'embedded'], type=str, help="type of the model to use")
 parser.add_argument('--load_model', default='', type=str, help="Path to model dict file to load.")
 parser.add_argument('--name', default='',type=str, help="Optional name of the model.")
 parser.add_argument('--start_epoch', default='0', type=int, help="Epochs of training of the loaded model. Deprecated")
@@ -42,15 +43,16 @@ parser.add_argument('--print_epoch', default=0, type=int, help="Print epoch numb
 parser.add_argument('--cpu', dest='cpu', action='store_true', help= "If set, training is carried out on the cpu.")
 parser.add_argument('--early_stop', dest='early_stop', action='store_true', help= "Enable early stop when the latest validation loss is larger than the average of the previous five validation losses.")
 parser.add_argument('--num_threads', default=0, type=int, help="Number of cpu threads to be used by pytorch. Default is 0 meaning same as number of cores.")
-parser.set_defaults(feature=False, monitor=False, load_model=False, test=False, cpu=False,print_epoch=False,early_stop=False)
+parser.set_defaults(feature=False, monitor=False, load_model=False, test=False, cpu=False, print_epoch=False, early_stop=False)
 
 args = parser.parse_args()
 
 if args.num_threads:
     torch.set_num_threads(args.num_threads)
 
-#device selection logic
-device=0
+
+# device selection logic
+device = 0
 if args.cpu:
     device = torch.device('cpu')
 else:
@@ -59,7 +61,7 @@ else:
 
 begin_time = datetime.now()
 time_str = begin_time.strftime("%Y_%m_%d") # year month day
-print("Begin: "+ str(time_str))
+print("Begin: " + str(time_str))
 
 
 #check model availability
@@ -71,7 +73,12 @@ if args.load_model:
 # ----- ----- ----- ----- ----- -----
 # Data loading
 # ----- ----- ----- ----- ----- -----
-data_path = os.path.join(args.data)
+
+if args.generalized_training:
+    data_path = 'lotka_range_data.hdf5'
+else:
+    data_path = 'lotka_data2.hdf5'
+
 f = h5py.File(data_path, 'r')
 keys = list(f.keys())
 print(keys)
@@ -123,7 +130,11 @@ start_epoch = 0
 # ----- ----- ----- ----- ----- -----
 # Model definition
 # ----- ----- ----- ----- ----- -----
-model   = MLPs.SimpleMLP(x_trn.shape[-1], y_trn.shape[-1], 80)
+if args.model_type == 'simple_mlp' and args.generalized_training is False:
+    model = MLPs.SimpleMLP(x_trn.shape[-1], y_trn.shape[-1], 80)
+else:
+    model = MLPs.SimpleMLPGen(4, y_trn.shape[-1], 80, x_trn.shape[-1] - 4)
+
 model_checkpoint = 0
 if args.load_model:
     model_checkpoint = torch.load(args.load_model)
