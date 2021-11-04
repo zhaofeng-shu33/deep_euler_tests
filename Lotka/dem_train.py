@@ -146,8 +146,6 @@ else:
 begin_time = datetime.now();
 time_str = begin_time.strftime("%y%m%d%H%M")
 print("Begin: "+ str(time_str))
-if not args.test:
-    logfile = open('training/' + (args.name+'_' if args.name else '') + time_str + '.log','w')
 
 
 #check model availability
@@ -175,7 +173,7 @@ input_names = ["x1", "x2"]
 
 print("Train data from: '"+ data_path +"'")
 if not args.test:                                                                                                                                                                                                             
-    print("Train data from: " + data_path, file=logfile)
+    print("Train data from: " + data_path)
 
 input_length = X.shape[1]
 print("Input length: " +str(input_length))
@@ -233,7 +231,7 @@ if args.load_model:
     model.load_state_dict(model_checkpoint['model_state_dict'])
     start_epoch = model_checkpoint['epoch']
     if not args.test:
-        print("Loaded model state from: " + str(args.load_model),file=logfile)
+        print("Loaded model state from: " + str(args.load_model))
         print("Loaded model state from: " + str(args.load_model))
         
 # ----- ----- ----- ----- ----- -----
@@ -254,7 +252,7 @@ if args.monitor==2:
     plt.figure(num="Training and Validation Losses")
     
 if not args.test:
-    print("Training...",file=logfile)
+    print("Training...")
 
 learned_epoch = 0
 vld_loss_best = 1e100
@@ -293,8 +291,8 @@ for num_epoch in range(args.epoch):
     if args.monitor==2 or (args.print_losses and num_epoch%args.print_losses==0):
         print('total loss', total_loss, 'validation loss', vld_loss)
     if not args.test:
-        print(total_loss, file=logfile)
-        print(vld_loss, file=logfile)
+        print(total_loss)
+        print(vld_loss)
     
     if args.monitor==2: #real-time plotting
         plt.cla()
@@ -313,12 +311,12 @@ for num_epoch in range(args.epoch):
         else:
             if num_epoch-best_epoch == 50:
                 if not args.test:
-                    print("Early stopped", file=logfile)
+                    print("Early stopped")
                 print("Early stopped")
                 break
     
 if not args.test:
-    print("Training ready, epochs: " + str(start_epoch) + "..." + str(start_epoch + learned_epoch), file=logfile)
+    print("Training ready, epochs: " + str(start_epoch) + "..." + str(start_epoch + learned_epoch))
 
 end_time = datetime.now()
 duration = end_time - begin_time
@@ -326,7 +324,7 @@ time_end_str = end_time.strftime("%y%m%d%H%M")
 print("Ended at: "+ time_end_str)
 print("Duration: " + str(duration))
 if not args.test:
-    print("Training duration: " + str(duration),file=logfile)
+    print("Training duration: " + str(duration))
 
 # ----- ----- ----- ----- ----- -----
 #Test
@@ -349,7 +347,7 @@ for batch in tst_ldr:
 test_loss    /= len(tst_ldr.dataset)
 print('Test loss: ' + str(test_loss))
 if not args.test:
-    print('Test loss: ' + str(test_loss),file=logfile)
+    print('Test loss: ' + str(test_loss))
   
 out = model(torch.tensor(x_tst,dtype=torch.float64).to(device)).cpu().detach().numpy()
 test_losses = np.abs(out - y_tst)
@@ -358,8 +356,8 @@ mean_loss = np.mean(test_losses)
 print('Max unnormed loss: ' + str(max_loss))
 print('Mean unnormed loss: ' + str(mean_loss))
 if not args.test:
-    print('Max unnormed loss: ' + str(max_loss),file=logfile)
-    print('Mean unnormed loss: ' + str(mean_loss),file=logfile)
+    print('Max unnormed loss: ' + str(max_loss))
+    print('Mean unnormed loss: ' + str(mean_loss))
     
 
 # ----- ----- ----- ----- ----- -----
@@ -387,7 +385,7 @@ if not args.test:
             'optimizer_state_dict': optim.state_dict()
             },
             args.save_path + saved_prefix + (args.name+'_' if args.name else '') + 'e' + str(start_epoch+learned_epoch) + '_' + time_str + '.pt')
-    print("Saved model.",file=logfile)
+    print("Saved model.")
     print("Saved model.")
 
     # trace model to be used by C/C++
@@ -396,7 +394,7 @@ if not args.test:
         model.eval()
     traced_model = torch.jit.trace(model.cpu(), torch.randn((1,x_trn.shape[-1])))
     traced_model.save(args.save_path+'traced_model_' + (args.name+'_' if args.name else '') + 'e'+str(start_epoch+learned_epoch) + '_' + time_str + '.pt')
-    print("Saved trace model.",file=logfile)
+    print("Saved trace model.")
     print("Saved trace model.")
 
 # ----- ----- ----- ----- ----- -----
@@ -441,7 +439,6 @@ if args.monitor>0:
 if not args.test and args.save_plots:
     plt.savefig(args.save_path+"Loss_distr_full_"+time_str+".png", transparent=True)
 
-if not args.test:
-    logfile.close()
+
     
 
