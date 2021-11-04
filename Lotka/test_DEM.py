@@ -1,6 +1,7 @@
 import numpy as np
 from scipy.integrate import solve_ivp
 
+from utils.data_utils import l2_error
 from utility import lotka_old
 from DEM import DeepEuler
 

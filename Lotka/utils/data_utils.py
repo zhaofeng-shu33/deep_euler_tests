@@ -109,7 +109,9 @@ def euler_truncation_error(arr, output_size):
     Y = np.reciprocal(dt_m*dt_m)*(arr[1:,1:output_size+1] - arr[:-1,1:output_size+1] - dt_m*arr[:-1, output_size+1:])
     return X,Y
 
-def l2_error(true_sol, sol_data):
-    t_list = sol_data[:, 0]
-    y_true = true_sol.sol(t_list)
-    return np.sqrt(np.average(np.linalg.norm(sol_data[:, 1:] - y_true.T, axis=1) ** 2 / 2))
+
+def l2_error(sol_true, sol):
+    y_true = sol_true.sol(sol.t)
+    n_dim = y_true.shape[0]
+    err = np.sqrt(np.average(np.linalg.norm(sol.y - y_true, axis=0) ** 2 / n_dim))
+    return err

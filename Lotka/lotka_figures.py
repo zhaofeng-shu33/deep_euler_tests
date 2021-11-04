@@ -28,8 +28,8 @@ for i in range(4):
     sol_euler = scipy.integrate.solve_ivp(lotka, [0, end_interval], [2.0, 1.0], step=euler_step_list[i], method=DeepEuler, disable_residue=True)
     sol_dem = scipy.integrate.solve_ivp(lotka, [0, end_interval], [2.0, 1.0], step=dem_step_list[i], method=DeepEuler, model_file='training/model_e20_2110201533.pt')
     euler_nfev.append(sol_euler.nfev)
-    euler_error.append(l2_error(sol, np.hstack((sol_euler.t.reshape((-1, 1)), sol_euler.y.T))))
-    dem_error.append(l2_error(sol, np.hstack((sol_dem.t.reshape((-1, 1)), sol_dem.y.T))))
+    euler_error.append(l2_error(sol, sol_euler))
+    dem_error.append(l2_error(sol, sol_dem))
     dem_nfev.append(10 * sol_dem.nfev)
 
 
