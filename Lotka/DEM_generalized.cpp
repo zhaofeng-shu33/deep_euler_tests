@@ -20,9 +20,9 @@ const int nn_stricted_inputs = 4;
 const int nn_outputs = 2; // output dimension
 c10::TensorOptions global_tensor_op;
 
-string file_name = "../lotka_dem.txt";
+string file_name = "../lotka_dem_generalized.txt";
 string file_name_normal_euler = "../lotka_euler.txt";
-string time_counting_file_name = "../clock.txt";
+string time_counting_file_name = "../clock_generalized.txt";
 string model_file = "../../training/traced_range_model_e20_2021_11_04.pt";
 string output_log = "../output_compare.txt";
 
