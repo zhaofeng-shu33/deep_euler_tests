@@ -9,17 +9,29 @@ class DeepEuler(RungeKuttaAdaptive):
     n_stages = 1
     order = 1
 
-    def __init__(self, fun, t0, y0, t_bound, step=None, vectorized=False, model_file=None, disable_residue=False, **extraneous):
+    def __init__(self, fun, t0, y0, t_bound, step=None, vectorized=False,
+                 model_file=None, disable_residue=False, theta=None, **extraneous):
         super().__init__(fun, t0, y0, t_bound, vectorized=vectorized, step=step, adaptive=False, **extraneous)
         # load the residue model
         if not disable_residue:
-            self.residue_model = MLPs.SimpleMLP(2 + len(y0), len(y0), 80)
             state_dic = torch.load(model_file)['model_state_dict']
+            input_dim = state_dic['l_in.weight'].shape[1]
+            self.residue_model = MLPs.SimpleMLP(input_dim, len(y0), 80)
             self.residue_model.load_state_dict(state_dic)
+            if input_dim > 5:
+                self.u_0= y0 # save y0 used for generalized NN model
+                self.theta = theta # should be a list for generalized NN model
+                self.generalized = True
+            else:
+                self.generalized = False
         self.disable_residue = disable_residue
 
     def residue_predict(self, t, y, h):
-        concatenated_tensor = torch.from_numpy(np.hstack(([t, t + h], y)))
+        if self.generalized:
+            concatenated_tensor = torch.from_numpy(np.hstack(([t, t + h], y, self.theta, self.u_0)))
+        else:
+            concatenated_tensor = torch.from_numpy(np.hstack(([t, t + h], y)))
+
         return self.residue_model(concatenated_tensor.float()).detach().numpy()
 
     def _step_impl(self):

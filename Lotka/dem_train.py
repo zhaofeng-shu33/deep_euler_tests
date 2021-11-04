@@ -1,4 +1,5 @@
 # -*- coding: utf-8 -*-
+# python dem_train.py --data lotka_range_data_2000_100.hdf5 --epoch 50 --print_losses 1
 import argparse
 import os
 import h5py
@@ -367,21 +368,9 @@ if not args.test:
 
 traced_model = 0
 if not args.test:
-    #save scalers
-    ''''f = open(args.save_path+'scaler_' + (args.name+'_' if args.name else '') +time_str + '.psca','w') #chosen this extension
-    if type(out_scaler) == StandardScaler:
-        writeStandardScaler(f, out_scaler)
-    else:
-        writeMinMaxScaler(f, out_scaler)
-        
-    if type(in_scaler) == StandardScaler:
-        writeStandardScaler(f, in_scaler)
-    else:
-        writeMinMaxScaler(f, in_scaler)
-    f.close()
-    print("Saved scalers.",file=logfile)
-    print("Saved scalers.")'''
-    
+    saved_prefix = 'model_'
+    if input_length > 6:
+        saved_prefix = 'range_model_'
     if args.early_stop:
         torch.save({
             'epoch': start_epoch+best_epoch,
@@ -389,7 +378,7 @@ if not args.test:
             #'scheduler_state_dict': best_scheduler_state_dict,
             'optimizer_state_dict': best_optim_state_dict
             },
-            args.save_path+'model_' + (args.name+'_' if args.name else '') + 'e' + str(start_epoch+learned_epoch) + '_' + time_str + '.pt')
+            args.save_path + saved_prefix + (args.name+'_' if args.name else '') + 'e' + str(start_epoch+learned_epoch) + '_' + time_str + '.pt')
     else:
         torch.save({
             'epoch': start_epoch+learned_epoch,
@@ -397,7 +386,7 @@ if not args.test:
             #'scheduler_state_dict': scheduler.state_dict(),
             'optimizer_state_dict': optim.state_dict()
             },
-            args.save_path+'model_' + (args.name+'_' if args.name else '') + 'e' + str(start_epoch+learned_epoch) + '_' + time_str + '.pt')
+            args.save_path + saved_prefix + (args.name+'_' if args.name else '') + 'e' + str(start_epoch+learned_epoch) + '_' + time_str + '.pt')
     print("Saved model.",file=logfile)
     print("Saved model.")
 
