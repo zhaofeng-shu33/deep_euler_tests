@@ -188,7 +188,7 @@ for num_epoch in range(args.epoch):
     vld_loss    /= len(vld_ldr.dataset)
     vld_loss_arr[num_epoch] = vld_loss
     if args.monitor == 2 or (args.print_losses and num_epoch % args.print_losses == 0):
-        print('total loss', total_loss, 'validation loss', vld_loss)
+        print(f'{num_epoch}: total loss', total_loss, 'validation loss', vld_loss)
 
     
     if args.monitor==2: #real-time plotting
@@ -243,17 +243,15 @@ for batch in tst_ldr:
     test_loss += loss(out, y).item() * len(x)
 test_loss    /= len(tst_ldr.dataset)
 if not args.test:
-    print('Test loss: ' + str(test_loss))
+    print('Test L2 loss: ' + str(test_loss))
   
 out = model(torch.tensor(x_tst,dtype=torch.float64).to(device)).cpu().detach().numpy()
-test_losses = np.abs(out - y_tst)
+test_losses = np.abs(out - y_tst) # L1 loss
 max_loss = np.max(test_losses)
 mean_loss = np.mean(test_losses)
-print('Max unnormalized loss: ' + str(max_loss))
-print('Mean unnormalized loss: ' + str(mean_loss))
 if not args.test:
-    print('Max unnormalized loss: ' + str(max_loss))
-    print('Mean unnormalized loss: ' + str(mean_loss))
+    print('Max unnormalized L1 loss: ' + str(max_loss))
+    print('Mean unnormalized L1 loss: ' + str(mean_loss))
 
 
 # ----- ----- ----- ----- ----- -----

@@ -17,9 +17,11 @@ if __name__ == '__main__':
     if args.action == 'time_series':
         end_interval = 15
         if args.generalized:
-            sol_dem = solve_ivp(lotka_old, [0, end_interval], [2.0, 1.0], step=0.1, method=DeepEuler, theta=[1.0, 1, 1, 1], model_file='training/range_model_e10_2021_11_04.pt')
+            sol_dem = solve_ivp(lotka_old, [0, end_interval], [2.0, 1.0], step=0.1, method=DeepEuler, theta=[1.0, 1, 1, 1], model_file='training/range_model_e20_2021_11_04.pt')
+            title = 'DEM generalized'
         else:
             sol_dem = solve_ivp(lotka_old, [0, end_interval], [2.0, 1.0], step=0.1, method=DeepEuler, model_file='training/model_e10_2021_11_04.pt')
+            title = 'DEM original'
         sol = solve_ivp(lotka_old, [0, end_interval], [2.0, 1.0], rtol=1e-6, atol=1e-6, dense_output=True)
         plt.plot(sol.t, sol.y[0, :], label='true y0')
         plt.plot(sol.t, sol.y[1, :], label='true y1')
@@ -27,6 +29,7 @@ if __name__ == '__main__':
         plt.plot(sol_dem.t, sol_dem.y[1, :], label='dem y1')
         plt.legend()
         plt.xlabel('t')
+        plt.title(title)
         plt.show()
     else:
         end_interval = 25

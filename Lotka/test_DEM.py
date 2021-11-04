@@ -14,7 +14,7 @@ def test_hyper_euler_lotka():
 def test_hyper_euler_generalized_lotka():
     end = 15
     sol_dem_gen = solve_ivp(lotka_old, [0, end], [2.0, 1.0], method=DeepEuler, theta=[1.0, 1, 1, 1],
-                    step=0.1, model_file='training/range_model_e10_2021_11_04.pt')
+                    step=0.1, model_file='training/range_model_e20_2021_11_04.pt')
     sol = solve_ivp(lotka_old, [0, end], [2.0, 1.0], rtol=1e-6, atol=1e-6, dense_output=True)
     print('dem generalized err', l2_error(sol, sol_dem_gen))
 

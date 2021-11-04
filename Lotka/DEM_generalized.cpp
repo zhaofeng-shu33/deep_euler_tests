@@ -15,14 +15,15 @@ using namespace std;
 
 //const int N = 16;
 //const int N_z = N / 2 - 1;
-const int nn_inputs = 4;
+const int nn_inputs = 10;
+const int nn_stricted_inputs = 4;
 const int nn_outputs = 2; // output dimension
 c10::TensorOptions global_tensor_op;
 
 string file_name = "../lotka_dem.txt";
 string file_name_normal_euler = "../lotka_euler.txt";
 string time_counting_file_name = "../clock.txt";
-string model_file = "../../training/traced_model_e20_2021_11_04.pt";
+string model_file = "../../training/traced_range_model_e20_2021_11_04.pt";
 string output_log = "../output_compare.txt";
 
 typedef double value_type;
@@ -146,12 +147,12 @@ public:
 		//updating inputs
 		inputs[0][0] = t_next;
 		inputs[0][1] = t;
-		for (int i = 0; i < nn_inputs - 2; i++) {
+		for (int i = 0; i < nn_stricted_inputs - 2; i++) {
 			inputs[0][i + 2] = x[i];
 		}
 		outputs_out << t << " ";
 		//log inputs
-		for (int i = 0; i < nn_inputs; i++) {
+		for (int i = 0; i < nn_stricted_inputs; i++) {
 			outputs_out << inputs[0][i].item<double>() << " ";
 		}
 
@@ -315,7 +316,7 @@ int main() {
 		setup_ofstream(ofs_2);
 
 		//initial conditions
-		std::array<value_type, nn_inputs> initial_inputs = { 1e-5, 0.0, 2.0, 1.0};
+		std::array<value_type, nn_inputs> initial_inputs = { 0.0, 0.1, 2.0, 1.0, 1.0, 1.0, 1.0, 1.0, 2.0, 1.0}; // t_m (1), t_{m+1} (1), u_m (2), theta(4), u_0(2)
 		
 		double t_start = 0.0;
 		lotka bubi(initial_inputs);
