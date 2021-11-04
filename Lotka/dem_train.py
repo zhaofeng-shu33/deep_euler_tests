@@ -25,112 +25,26 @@ torch.set_default_dtype(torch.float64)
 # ----- ----- ----- ----- ----- -----
 # Command line arguments
 # ----- ----- ----- ----- ----- -----
-parser  = argparse.ArgumentParser()
-parser.add_argument(
-    '--data',
-    default = 'lotka_data2.hdf5',
-    )
-parser.add_argument(
-    '--lr',
-    type=float,
-    default=3e-4,
-    )
+parser = argparse.ArgumentParser()
+parser.add_argument('--data', default='lotka_data2.hdf5')
+parser.add_argument('--lr', type=float, default=3e-4)
+parser.add_argument('--batch', default='1000', type=int, help="Batch size. 0 means training set length.")
+parser.add_argument('--epoch', default='1',type=int, help="Number of epochs to train.")
+parser.add_argument('--load_model', default='', type=str, help="Path to model dict file to load.")
+parser.add_argument('--name', default='',type=str, help="Optional name of the model.")
+parser.add_argument('--start_epoch', default='0', type=int, help="Epochs of training of the loaded model. Deprecated")
+parser.add_argument('--save_path', default='training/', type=str,help="Path to save model.")
+parser.add_argument('--monitor', default=0, type=int, help="0: no monitoring, 1: show plots on end, 2: monitor all along")
+parser.add_argument('--print_losses',default=0, type=int, help="Print every nth losses. Default is 0 meaning no print. Option monitor=2 overrides this.")
+parser.add_argument('--save_plots', dest='save_plots', action='store_true', help="If set, saves the plots generated after training.")
+parser.add_argument('--test', dest='test', action='store_true',help="If set, no saving takes place.")
+parser.add_argument('--print_epoch', default=0, type=int, help="Print epoch number at every nth epoch. Default is zero, meaning no print.")
+parser.add_argument('--cpu', dest='cpu', action='store_true', help= "If set, training is carried out on the cpu.")
+parser.add_argument('--early_stop', dest='early_stop', action='store_true', help= "Enable early stop when the latest validation loss is larger than the average of the previous five validation losses.")
+parser.add_argument('--num_threads', default=0, type=int, help="Number of cpu threads to be used by pytorch. Default is 0 meaning same as number of cores.")
+parser.set_defaults(feature=False, monitor=False, load_model=False, test=False, cpu=False,print_epoch=False,early_stop=False)
 
-parser.add_argument(
-    '--batch',
-    default = '1000',
-    type    = int,
-    help    = "Batch size. 0 means training set length."
-    )
-parser.add_argument(
-    '--epoch',
-    default = '1',
-    type    = int,
-    help    = "Number of epochs to train."
-    )
-parser.add_argument(
-    '--load_model',
-    default = '',
-    type    = str,
-    help    = "Path to model dict file to load."
-    )
-parser.add_argument(
-    '--name',
-    default = '',
-    type    = str,
-    help    = "Optional name of the model."
-    )
-parser.add_argument(
-    '--start_epoch',
-    default = '0',
-    type    = int,
-    help    = "Epochs of training of the loaded model. Deprecated"
-    )
-parser.add_argument(
-    '--save_path',
-    default = 'training/',
-    type    = str,
-    help    = "Path to save model."
-    )
-parser.add_argument(
-    '--monitor',
-    default = 0,
-    type    = int,
-    help    = "0: no monitoring, 1: show plots on end, 2: monitor all along"
-    )
-parser.add_argument(
-    '--print_losses',
-    default=0,
-    type=int,
-    help    = "Print every nth losses. Default is 0 meaning no print. Option monitor=2 overrides this."
-    )
-parser.add_argument(
-    '--save_plots',
-    dest = 'save_plots',
-    action = 'store_true',
-    help = "If set, saves the plots generated after training."
-    )
-parser.add_argument(
-    '--test',
-    dest='test',
-    action='store_true',
-    help    = "If set, no saving takes place."
-    )
-parser.add_argument(
-    '--print_epoch',
-    default = 0,
-    type    = int,
-    help    = "Print epoch number at every nth epoch. Default is zero, meaning no print."
-    )
-parser.add_argument(
-    '--cpu',
-    dest='cpu', 
-    action='store_true', 
-    help= "If set, training is carried out on the cpu."
-    )
-parser.add_argument(
-    '--early_stop',
-    dest='early_stop', 
-    action='store_true', 
-    help= "Enable early stop when the latest validation loss is larger than the average of the previous five validation losses."
-    )
-parser.add_argument(
-    '--num_threads',
-    default = 0,
-    type    = int,
-    help    = "Number of cpu threads to be used by pytorch. Default is 0 meaning same as number of cores."
-    )
-
-parser.set_defaults(
-    feature=False, 
-    monitor=False, 
-    load_model=False, 
-    test=False, 
-    cpu=False,
-    print_epoch=False,
-    early_stop=False
-    )
-args    = parser.parse_args()
+args = parser.parse_args()
 
 if args.num_threads:
     torch.set_num_threads(args.num_threads)
@@ -143,15 +57,15 @@ else:
     device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
 
-begin_time = datetime.now();
-time_str = begin_time.strftime("%y%m%d%H%M")
+begin_time = datetime.now()
+time_str = begin_time.strftime("%Y_%m_%d") # year month day
 print("Begin: "+ str(time_str))
 
 
 #check model availability
 if args.load_model:
     if not os.path.exists(args.load_model):
-        print("File: " +args.load_model+" does not exist. Abort")
+        print("File: " + args.load_model + " does not exist. Abort")
         exit()
 
 # ----- ----- ----- ----- ----- -----
@@ -171,7 +85,6 @@ f.close()
 print(X[1,:])
 input_names = ["x1", "x2"]
 
-print("Train data from: '"+ data_path +"'")
 if not args.test:                                                                                                                                                                                                             
     print("Train data from: " + data_path)
 
@@ -190,20 +103,6 @@ x_vld, x_tst, y_vld, y_tst  = train_test_split(
     shuffle     = False
     )
 
-# ----- ----- ----- ----- ----- -----
-# Data scaling
-# ----- ----- ----- ----- ----- -----
-'''in_scaler  = StandardScaler(with_mean=True, with_std=True, copy=False)
-out_scaler = MinMaxScaler(feature_range=(0, 1), copy=False)
-in_scaler.fit(x_trn)
-out_scaler.fit(y_trn)
-x_trn   = in_scaler.transform(x_trn)
-x_vld   = in_scaler.transform(x_vld)
-x_tst   = in_scaler.transform(x_tst)
-y_trn   = out_scaler.transform(y_trn)
-y_vld   = out_scaler.transform(y_vld)
-y_tst_unnormed = np.array(y_tst,copy=True)
-y_tst   = out_scaler.transform(y_tst)'''
 
 
 trn_set = TensorDataset(torch.tensor(x_trn, dtype=torch.float64), torch.tensor(y_trn, dtype=torch.float64))
@@ -288,11 +187,9 @@ for num_epoch in range(args.epoch):
         vld_loss += loss(out, y).item() * len(x)
     vld_loss    /= len(vld_ldr.dataset)
     vld_loss_arr[num_epoch] = vld_loss
-    if args.monitor==2 or (args.print_losses and num_epoch%args.print_losses==0):
+    if args.monitor == 2 or (args.print_losses and num_epoch % args.print_losses == 0):
         print('total loss', total_loss, 'validation loss', vld_loss)
-    if not args.test:
-        print(total_loss)
-        print(vld_loss)
+
     
     if args.monitor==2: #real-time plotting
         plt.cla()
@@ -345,7 +242,6 @@ for batch in tst_ldr:
     out = model(x)
     test_loss += loss(out, y).item() * len(x)
 test_loss    /= len(tst_ldr.dataset)
-print('Test loss: ' + str(test_loss))
 if not args.test:
     print('Test loss: ' + str(test_loss))
   
@@ -353,12 +249,12 @@ out = model(torch.tensor(x_tst,dtype=torch.float64).to(device)).cpu().detach().n
 test_losses = np.abs(out - y_tst)
 max_loss = np.max(test_losses)
 mean_loss = np.mean(test_losses)
-print('Max unnormed loss: ' + str(max_loss))
-print('Mean unnormed loss: ' + str(mean_loss))
+print('Max unnormalized loss: ' + str(max_loss))
+print('Mean unnormalized loss: ' + str(mean_loss))
 if not args.test:
-    print('Max unnormed loss: ' + str(max_loss))
-    print('Mean unnormed loss: ' + str(mean_loss))
-    
+    print('Max unnormalized loss: ' + str(max_loss))
+    print('Mean unnormalized loss: ' + str(mean_loss))
+
 
 # ----- ----- ----- ----- ----- -----
 # Model Save
@@ -386,22 +282,20 @@ if not args.test:
             },
             args.save_path + saved_prefix + (args.name+'_' if args.name else '') + 'e' + str(start_epoch+learned_epoch) + '_' + time_str + '.pt')
     print("Saved model.")
-    print("Saved model.")
 
     # trace model to be used by C/C++
     if args.early_stop:
         model.load_state_dict(best_model_state_dict)
         model.eval()
     traced_model = torch.jit.trace(model.cpu(), torch.randn((1,x_trn.shape[-1])))
-    traced_model.save(args.save_path+'traced_model_' + (args.name+'_' if args.name else '') + 'e'+str(start_epoch+learned_epoch) + '_' + time_str + '.pt')
-    print("Saved trace model.")
+    traced_model.save(args.save_path + 'traced_' + saved_prefix + (args.name+'_' if args.name else '') + 'e'+str(start_epoch+learned_epoch) + '_' + time_str + '.pt')
     print("Saved trace model.")
 
 # ----- ----- ----- ----- ----- -----
 # Plotting
 # ----- ----- ----- ----- ----- -----
  
-if args.monitor>0:
+if args.monitor > 0:
     plt.ion()
     plt.show()
 plt.plot(epochs[0:learned_epoch], total_loss_arr[0:learned_epoch], label='Total Loss')
