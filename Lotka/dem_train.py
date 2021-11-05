@@ -27,10 +27,10 @@ torch.set_default_dtype(torch.float64)
 # ----- ----- ----- ----- ----- -----
 parser = argparse.ArgumentParser()
 parser.add_argument('--generalized_training', default=False, const=True, nargs='?')
+parser.add_argument('--model_type', default='simple_mlp', choices=['simple_mlp', 'embedded'], type=str, help="type of the model to use")
 parser.add_argument('--lr', type=float, default=3e-4)
 parser.add_argument('--batch', default='1000', type=int, help="Batch size. 0 means training set length.")
 parser.add_argument('--epoch', default='1',type=int, help="Number of epochs to train.")
-parser.add_argument('--model_type', default='simple_mlp', choices=['simple_mlp', 'embedded'], type=str, help="type of the model to use")
 parser.add_argument('--load_model', default='', type=str, help="Path to model dict file to load.")
 parser.add_argument('--name', default='',type=str, help="Optional name of the model.")
 parser.add_argument('--start_epoch', default='0', type=int, help="Epochs of training of the loaded model. Deprecated")
@@ -130,10 +130,10 @@ start_epoch = 0
 # ----- ----- ----- ----- ----- -----
 # Model definition
 # ----- ----- ----- ----- ----- -----
-if args.model_type == 'simple_mlp' and args.generalized_training is False:
-    model = MLPs.SimpleMLP(x_trn.shape[-1], y_trn.shape[-1], 80)
-else:
+if args.model_type == 'embedded' and args.generalized_training is True:
     model = MLPs.SimpleMLPGen(4, y_trn.shape[-1], 80, x_trn.shape[-1] - 4)
+else:
+    model = MLPs.SimpleMLP(x_trn.shape[-1], y_trn.shape[-1], 80)
 
 model_checkpoint = 0
 if args.load_model:
