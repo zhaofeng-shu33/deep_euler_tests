@@ -36,7 +36,7 @@ parser.add_argument('--name', default='',type=str, help="Optional name of the mo
 parser.add_argument('--start_epoch', default='0', type=int, help="Epochs of training of the loaded model. Deprecated")
 parser.add_argument('--save_path', default='training/', type=str,help="Path to save model.")
 parser.add_argument('--monitor', default=0, type=int, help="0: no monitoring, 1: show plots on end, 2: monitor all along")
-parser.add_argument('--print_losses',default=0, type=int, help="Print every nth losses. Default is 0 meaning no print. Option monitor=2 overrides this.")
+parser.add_argument('--print_losses',default=1, type=int, help="Print every nth losses. 0 means no print. Default=1 means prints every epoch. Option monitor=2 overrides this.")
 parser.add_argument('--save_plots', dest='save_plots', action='store_true', help="If set, saves the plots generated after training.")
 parser.add_argument('--test', dest='test', action='store_true',help="If set, no saving takes place.")
 parser.add_argument('--print_epoch', default=0, type=int, help="Print epoch number at every nth epoch. Default is zero, meaning no print.")
@@ -119,7 +119,7 @@ trn_ldr = DataLoader(
     batch_size  = len(trn_set) if args.batch==0 else args.batch,
     shuffle     = True
     )
-vld_batch = 100000
+vld_batch = args.batch
 vld_ldr = DataLoader(
     vld_set,
     batch_size  = vld_batch,
@@ -238,7 +238,7 @@ if not args.test:
 #Test
 # ----- ----- ----- ----- ----- -----
 tst_set = TensorDataset(torch.Tensor(x_tst), torch.Tensor(y_tst))
-tst_batch = 100000
+tst_batch = args.batch
 tst_ldr = DataLoader(
     tst_set,
     batch_size  = tst_batch,
@@ -255,14 +255,16 @@ for batch in tst_ldr:
 test_loss    /= len(tst_ldr.dataset)
 if not args.test:
     print('Test L2 loss: ' + str(test_loss))
-  
-out = model(torch.tensor(x_tst,dtype=torch.float64).to(device)).cpu().detach().numpy()
-test_losses = np.abs(out - y_tst) # L1 loss
-max_loss = np.max(test_losses)
-mean_loss = np.mean(test_losses)
-if not args.test:
-    print('Max unnormalized L1 loss: ' + str(max_loss))
-    print('Mean unnormalized L1 loss: ' + str(mean_loss))
+
+# fix me: SimpleMLPGen does not support huge batch size
+if args.model_type != 'embedded':
+    out = model(torch.tensor(x_tst, dtype=torch.float64).to(device)).cpu().detach().numpy()
+    test_losses = np.abs(out - y_tst) # L1 loss
+    max_loss = np.max(test_losses)
+    mean_loss = np.mean(test_losses)
+    if not args.test:
+        print('Max unnormalized L1 loss: ' + str(max_loss))
+        print('Mean unnormalized L1 loss: ' + str(mean_loss))
 
 
 # ----- ----- ----- ----- ----- -----
@@ -272,8 +274,10 @@ if not args.test:
 traced_model = 0
 if not args.test:
     saved_prefix = 'model_'
-    if input_length > 6:
+    if args.generalized_training:
         saved_prefix = 'range_model_'
+        if args.model_type == 'embedded':
+            saved_prefix = 'range_embedded_model'
     if args.early_stop:
         torch.save({
             'epoch': start_epoch+best_epoch,
@@ -314,34 +318,31 @@ plt.title('Loss Diagram')
 plt.xlabel('Epochs')
 plt.ylabel('Loss')
 plt.legend()
-if args.monitor>0:
+if args.monitor > 0:
     plt.show()
 if not args.test and args.save_plots:
     plt.savefig(args.save_path+"learning_curve_"+ (args.name+'_' if args.name else '') + time_str+".png", transparent=True)
 
-plt.figure(num="Losses")
-plt.title("Loss Distribution of Truncation Error")
-for i in range(test_losses.shape[1]):
-    plot_loghist(test_losses[:,i], 500, label=input_names[i])
-plt.legend()
-if args.monitor>0:
+
+if args.model_type != 'embedded':
+    plt.figure(num="Losses")
+    plt.title("Loss Distribution of Truncation Error")
+    for i in range(test_losses.shape[1]):
+        plot_loghist(test_losses[:,i], 500, label=input_names[i])
+    plt.legend()
+    if args.monitor > 0:
+            plt.show()
+    if not args.test and args.save_plots:
+        plt.savefig(args.save_path+"Loss_distr_"+time_str+".png", transparent=True)
+            
+    plt.figure(num="Losses (Full)")
+    plt.title("Loss Distribution of Truncation Error(Full)")
+    plot_loghist(test_losses.flat, 500)
+    #plt.hist(test_losses.flat, bins=50)
+    #plt.ylim([0,500])
+    plt.xscale('log')
+    if args.monitor>0:
+        plt.ioff()
         plt.show()
-if not args.test and args.save_plots:
-    plt.savefig(args.save_path+"Loss_distr_"+time_str+".png", transparent=True)
-        
-plt.figure(num="Losses (Full)")
-plt.title("Loss Distribution of Truncation Error(Full)")
-plot_loghist(test_losses.flat, 500)
-#plt.hist(test_losses.flat, bins=50)
-#plt.ylim([0,500])
-plt.xscale('log')
-if args.monitor>0:
-    plt.ioff()
-    plt.show()
-    
-if not args.test and args.save_plots:
-    plt.savefig(args.save_path+"Loss_distr_full_"+time_str+".png", transparent=True)
-
-
-    
-
+    if not args.test and args.save_plots:
+        plt.savefig(args.save_path+"Loss_distr_full_"+time_str+".png", transparent=True)

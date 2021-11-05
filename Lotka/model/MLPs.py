@@ -113,3 +113,8 @@ class SimpleMLPGen(nn.Module):
         y = self.act(torch.tensordot(real_features, l_in_weight, dims=([1], [1])).diagonal(dim1=0, dim2=1).t() + l_in_bias)
         y = torch.tensordot(y, l_out_weight, dims=([1], [1])).diagonal(dim1=0, dim2=1).t() + l_out_bias
         return y
+
+if __name__ == '__main__':
+    model = SimpleMLPGen(4,2,3,5)
+    x = torch.rand(2,9)  
+    y = model.forward(x)

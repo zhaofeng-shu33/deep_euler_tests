@@ -16,7 +16,13 @@ class DeepEuler(RungeKuttaAdaptive):
         if not disable_residue:
             state_dic = torch.load(model_file)['model_state_dict']
             input_dim = state_dic['l_in.weight'].shape[1]
-            self.residue_model = MLPs.SimpleMLP(input_dim, len(y0), 80)
+            if state_dic.get('l4.weight') is not None:
+                self.residue_model = MLPs.SimpleMLP(input_dim, len(y0), 80)
+                self.is_embedded = False
+            else:
+                self.residue_model = MLPs.SimpleMLPGen(4, len(y0), 80, input_dim)
+                self.is_embedded = True
+
             self.residue_model.load_state_dict(state_dic)
             if input_dim > 5:
                 self.u_0= y0 # save y0 used for generalized NN model
@@ -31,8 +37,12 @@ class DeepEuler(RungeKuttaAdaptive):
             concatenated_tensor = torch.from_numpy(np.hstack(([t, t + h], y, self.theta, self.u_0)))
         else:
             concatenated_tensor = torch.from_numpy(np.hstack(([t, t + h], y)))
-
-        return self.residue_model(concatenated_tensor.float()).detach().numpy()
+        if self.is_embedded:
+            concatenated_tensor = concatenated_tensor.reshape((1, -1))
+        output = self.residue_model(concatenated_tensor.float()).detach().numpy()
+        if self.is_embedded:
+            output = output.reshape(-1)
+        return output
 
     def _step_impl(self):
         t = self.t
