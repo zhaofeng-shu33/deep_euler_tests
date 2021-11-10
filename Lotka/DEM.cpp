@@ -23,7 +23,7 @@ string file_name = "../lotka_dem.txt";
 string file_name_normal_euler = "../lotka_euler.txt";
 string time_counting_file_name = "../clock.txt";
 string model_file = "../../training/traced_model_e20_2021_11_04.pt";
-string output_log = "../output_compare.txt";
+// string output_log = "../output_compare.txt";
 
 typedef double value_type;
 typedef vector<value_type> state_type;
@@ -149,11 +149,11 @@ public:
 		for (int i = 0; i < nn_inputs - 2; i++) {
 			inputs[0][i + 2] = x[i];
 		}
-		outputs_out << t << " ";
+		// outputs_out << t << " ";
 		//log inputs
-		for (int i = 0; i < nn_inputs; i++) {
-			outputs_out << inputs[0][i].item<double>() << " ";
-		}
+		//for (int i = 0; i < nn_inputs; i++) {
+		//	outputs_out << inputs[0][i].item<double>() << " ";
+		//}
 
 		//scaling
 		torch::Tensor scaled = inputs; //std_transf(inputs);
@@ -166,9 +166,9 @@ public:
 		//log outputs
 		for (int i = 0; i < nn_outputs; i++) {
 			errors[i] = loc_trun_err[0][i].item<double>();
-			outputs_out << errors[i] << " ";
+			// outputs_out << errors[i] << " ";
 		}
-		outputs_out << endl;
+		// outputs_out << endl;
 		return errors;
 	}
 
