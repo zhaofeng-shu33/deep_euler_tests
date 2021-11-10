@@ -299,7 +299,13 @@ if not args.test:
     if args.early_stop:
         model.load_state_dict(best_model_state_dict)
         model.eval()
-    traced_model = torch.jit.trace(model.cpu(), torch.randn((1,x_trn.shape[-1])))
+    if args.model_type == 'embedded':
+        meta_features = torch.Tensor([1.0, 1, 1, 1, 2.0, 1.0])
+        p_model = MLPs.SimpleMLPGen_with_meta_feature(4, 2, 80)
+        p_model.set_parameters(meta_features, model)
+        traced_model = torch.jit.trace(p_model.cpu(), torch.randn((1, 4)))
+    else:
+        traced_model = torch.jit.trace(model.cpu(), torch.randn((1,x_trn.shape[-1])))
     traced_model.save(args.save_path + 'traced_' + saved_prefix + (args.name+'_' if args.name else '') + 'e'+str(start_epoch+learned_epoch) + '_' + time_str + '.pt')
     print("Saving trace model.")
 

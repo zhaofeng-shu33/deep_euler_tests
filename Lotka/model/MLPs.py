@@ -69,9 +69,26 @@ class SimpleMLP(nn.Module):
         x   = self.l_out(x)
         return x
 
+
 class SimpleMLPGen_with_meta_feature(nn.Module):
-    def __init__(self, meta_in_features, simple_mlp_gen_obj):
+    def __init__(self, num_in_features, num_out_features, neurons_per_layer):
         super(SimpleMLPGen_with_meta_feature, self).__init__()
+        self.l_in   = nn.Linear(
+            in_features = num_in_features,
+            out_features= neurons_per_layer
+            )
+        self.l_out   = nn.Linear(
+            in_features = neurons_per_layer,
+            out_features= num_out_features
+            )               
+        self.act = nn.ELU()
+
+    def forward(self, x):
+        x   = self.act(self.l_in(x))
+        x   = self.l_out(x)
+        return x
+
+    def set_parameters(self, meta_in_features, simple_mlp_gen_obj):
         x   = simple_mlp_gen_obj.act(simple_mlp_gen_obj.l_in(meta_in_features))
         x   = simple_mlp_gen_obj.l_out(x)
         # x is a long vector, now split it into 4 parts
@@ -84,23 +101,11 @@ class SimpleMLPGen_with_meta_feature(nn.Module):
         l_out_weight = x[_base:_base + _base_add].reshape((simple_mlp_gen_obj.neurons_per_layer, simple_mlp_gen_obj.num_out_features)).t()
         _base += _base_add
         l_out_bias = x[_base:]
-        self.l_in   = nn.Linear(
-            in_features = simple_mlp_gen_obj.num_in_features,
-            out_features= simple_mlp_gen_obj.neurons_per_layer
-            )
-        self.l_out   = nn.Linear(
-            in_features = simple_mlp_gen_obj.neurons_per_layer,
-            out_features= simple_mlp_gen_obj.num_out_features
-            )
+
         self.l_in.weight = torch.nn.Parameter(l_in_weight)
         self.l_out.weight = torch.nn.Parameter(l_out_weight)
         self.l_in.bias = torch.nn.Parameter(l_in_bias)
         self.l_out.bias = torch.nn.Parameter(l_out_bias)
-        self.act = nn.ELU()
-    def forward(self, x):
-        x   = self.act(self.l_in(x))
-        x   = self.l_out(x)
-        return x
 
 class SimpleMLPGen(nn.Module):
     def __init__(self, num_in_features, num_out_features, neurons_per_layer, num_meta_in_features):
@@ -152,11 +157,14 @@ if __name__ == '__main__':
     model = SimpleMLPGen(4, 2, 80, 6)
     model_checkpoint = torch.load('../training/range_embedded_model_e11_2021_11_05.pt')
     model.load_state_dict(model_checkpoint['model_state_dict'])
-    meta_features = torch.ones(6)
-    p_model = SimpleMLPGen_with_meta_feature(meta_features, model)
+    meta_features = torch.Tensor([1.0, 1, 1, 1, 2.0, 1.0])
+    p_model = SimpleMLPGen_with_meta_feature(4, 2, 80)
+    p_model.set_parameters(meta_features, model)
+    # save the p_model
+
     # now test that the predicted results are the same for the two model variants
     features = torch.Tensor([0.6735, 0.0601, 0.5753, 0.2459])
-    result_1 = p_model.forward(features)
+    result_1 = p_model.forward(features.reshape((1, -1)))
     result_2 = model.forward(torch.cat((features, meta_features)).reshape((1, -1)))
     print(result_1)
     print(result_2)

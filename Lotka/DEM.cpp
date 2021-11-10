@@ -9,6 +9,7 @@
 #include <chrono>
 #include <regex>
 
+#include <boost/program_options.hpp>
 #include <torch/script.h>
 
 using namespace std;
@@ -23,7 +24,9 @@ string file_name = "../lotka_dem.txt";
 string file_name_normal_euler = "../lotka_euler.txt";
 string time_counting_file_name = "../clock.txt";
 string model_file = "../../training/traced_model_e20_2021_11_04.pt";
-// string output_log = "../output_compare.txt";
+string embedded_model_file = "../../training/traced_range_embedded_model_e22_2021_11_10.pt";
+static bool use_embedded = false;
+
 
 typedef double value_type;
 typedef vector<value_type> state_type;
@@ -117,7 +120,12 @@ public:
 		//outputs: z... grad_z(wall)
 
 		try {
-			model = torch::jit::load(model_file);
+			if (use_embedded) {
+				model = torch::jit::load(embedded_model_file);
+			}
+			else {
+				model = torch::jit::load(model_file);
+			}
 			std::vector<torch::jit::IValue> inp;
 			inp.push_back(torch::ones({ 1, nn_inputs }, global_tensor_op));
 			std::cout << inp << endl;
@@ -292,7 +300,20 @@ void setup_ofstream(ofstream& ofs) {
 	ofs.flags(ios::scientific);
 }
 
-int main() {
+int main(int argc, const char* argv[]) {
+	boost::program_options::options_description desc;
+	desc.add_options()
+		("help,h", "Show this help screen")
+		("embedded", boost::program_options::value<bool>()->implicit_value(true)->default_value(false), "whether to use embedded model");
+	boost::program_options::variables_map vm;
+	boost::program_options::store(boost::program_options::parse_command_line(argc, argv, desc), vm);
+	boost::program_options::notify(vm);
+	if (vm.count("help")) {
+		std::cout << desc << '\n';
+		return 0;
+	}
+	use_embedded = vm["embedded"].as<bool>();
+
 	global_tensor_op = torch::TensorOptions().dtype(torch::kFloat64);
 	std::cout << "Lotka Volterra with meta-model started\n" << setprecision(17) << endl;
 
