@@ -13,11 +13,14 @@ set(CMAKE_CXX_STANDARD 14)
 set(CMAKE_CXX_STANDARD_REQUIRED True)
 
 find_package(Torch REQUIRED)
+find_package(Boost REQUIRED program_options)
+
 set(CMAKE_CXX_FLAGS "${CMAKE_CXX_FLAGS} ${TORCH_CXX_FLAGS}")
 
 
 add_executable(DEM DEM.cpp)
 target_link_libraries(DEM "${TORCH_LIBRARIES}")
+target_link_libraries(DEM Boost::program_options)
 set_property(TARGET DEM PROPERTY CXX_STANDARD 14)
 
 add_executable(DEMGEN DEM_generalized.cpp)
