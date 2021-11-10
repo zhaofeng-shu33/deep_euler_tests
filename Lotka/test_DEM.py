@@ -5,6 +5,12 @@ from utils.data_utils import l2_error
 from utility import lotka_old
 from DEM import DeepEuler
 
+def test_euler_lotka():
+    end = 15
+    sol_euler = solve_ivp(lotka_old, [0, end], [2.0, 1.0], method=DeepEuler, step=0.1, disable_residue=True)
+    sol = solve_ivp(lotka_old, [0, end], [2.0, 1.0], rtol=1e-6, atol=1e-6, dense_output=True)
+    print('euler err', l2_error(sol, sol_euler))    
+    
 def test_hyper_euler_lotka():
     end = 15
     sol_dem = solve_ivp(lotka_old, [0, end], [2.0, 1.0], method=DeepEuler, step=0.1, model_file='training/model_e10_2021_11_04.pt')
@@ -26,6 +32,7 @@ def test_hyper_euler_generalized_embedded_lotka():
     print('dem generalized embedded err', l2_error(sol, sol_dem_gen))
 
 if __name__ == '__main__':
+    test_euler_lotka()
     test_hyper_euler_lotka()
     test_hyper_euler_generalized_lotka()
     test_hyper_euler_generalized_embedded_lotka()

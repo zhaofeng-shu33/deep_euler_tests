@@ -98,7 +98,7 @@ struct norm_scaler {
 
 //ode function of bubble dynamic
 class lotka {
-	std::ofstream outputs_out;
+//	std::ofstream outputs_out;
 public:
 	torch::jit::script::Module model; //the neural network
 	torch::Tensor inputs; //reused tensor of inputs
@@ -106,9 +106,9 @@ public:
 	norm_scaler nrm_transf;
 
 	lotka(std::array<double, nn_inputs> inital_values) {
-		outputs_out.open(output_log);
-		outputs_out.precision(17);
-		outputs_out.flags(ios::scientific);
+//		outputs_out.open(output_log);
+//		outputs_out.precision(17);
+//		outputs_out.flags(ios::scientific);
 
 		//metamodel initializations
 		inputs = torch::ones({ 1, nn_inputs }, global_tensor_op);
@@ -294,7 +294,7 @@ void setup_ofstream(ofstream& ofs) {
 
 int main() {
 	global_tensor_op = torch::TensorOptions().dtype(torch::kFloat64);
-	std::cout << "Lotka Volterra with metamodel started\n" << setprecision(17) << endl;
+	std::cout << "Lotka Volterra with meta-model started\n" << setprecision(17) << endl;
 
 	double* x = new double[nn_outputs]{ 2.0, 1.0 };
 

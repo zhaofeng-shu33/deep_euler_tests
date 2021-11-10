@@ -34,7 +34,7 @@ parser.add_argument('--epoch', default='1',type=int, help="Number of epochs to t
 parser.add_argument('--load_model', default='', type=str, help="Path to model dict file to load.")
 parser.add_argument('--name', default='',type=str, help="Optional name of the model.")
 parser.add_argument('--start_epoch', default='0', type=int, help="Epochs of training of the loaded model. Deprecated")
-parser.add_argument('--save_path', default='training/', type=str,help="Path to save model.")
+parser.add_argument('--save_path', default='training/', type=str, help="Path to save model.")
 parser.add_argument('--monitor', default=0, type=int, help="0: no monitoring, 1: show plots on end, 2: monitor all along")
 parser.add_argument('--print_losses',default=1, type=int, help="Print every nth losses. 0 means no print. Default=1 means prints every epoch. Option monitor=2 overrides this.")
 parser.add_argument('--save_plots', dest='save_plots', action='store_true', help="If set, saves the plots generated after training.")
@@ -294,7 +294,7 @@ if not args.test:
             'optimizer_state_dict': optim.state_dict()
             },
             args.save_path + saved_prefix + (args.name+'_' if args.name else '') + 'e' + str(start_epoch+learned_epoch) + '_' + time_str + '.pt')
-    print("Saved model.")
+    print("Saving model.")
 
     # trace model to be used by C/C++
     if args.early_stop:
@@ -302,7 +302,7 @@ if not args.test:
         model.eval()
     traced_model = torch.jit.trace(model.cpu(), torch.randn((1,x_trn.shape[-1])))
     traced_model.save(args.save_path + 'traced_' + saved_prefix + (args.name+'_' if args.name else '') + 'e'+str(start_epoch+learned_epoch) + '_' + time_str + '.pt')
-    print("Saved trace model.")
+    print("Saving trace model.")
 
 # ----- ----- ----- ----- ----- -----
 # Plotting
