@@ -277,7 +277,7 @@ if not args.test:
     if args.generalized_training:
         saved_prefix = 'range_model_'
         if args.model_type == 'embedded':
-            saved_prefix = 'range_embedded_model'
+            saved_prefix = 'range_embedded_model_'
     if args.early_stop:
         torch.save({
             'epoch': start_epoch+best_epoch,
