@@ -142,7 +142,6 @@ if args.load_model:
     start_epoch = model_checkpoint['epoch']
     if not args.test:
         print("Loaded model state from: " + str(args.load_model))
-        print("Loaded model state from: " + str(args.load_model))
         
 # ----- ----- ----- ----- ----- -----
 # Training
