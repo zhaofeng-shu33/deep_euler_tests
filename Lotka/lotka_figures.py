@@ -66,7 +66,7 @@ if __name__ == '__main__':
             t_list_dem_generalized.append(time_dem_generalized)
             t_list_euler.append(time_euler)
 
-        plt.subplot(1,2,1)
+        
         plt.scatter(error_list_dem, t_list_dem, label='dem')
         plt.scatter(error_list_euler, t_list_euler, label='euler')
         plt.xlabel('error')
@@ -74,7 +74,7 @@ if __name__ == '__main__':
         plt.title('dem vs euler')
         plt.legend()
 
-        plt.subplot(1,2,2)
+        plt.figure()
         plt.scatter(error_list_dem_generalized, t_list_dem_generalized, label='dem')
         plt.scatter(error_list_euler, t_list_euler, label='euler')
         plt.xlabel('error')

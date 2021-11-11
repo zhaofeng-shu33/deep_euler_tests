@@ -27,6 +27,11 @@ add_executable(DEMGEN DEM_generalized.cpp)
 target_link_libraries(DEMGEN "${TORCH_LIBRARIES}")
 set_property(TARGET DEMGEN PROPERTY CXX_STANDARD 14)
 
+add_executable(PRL prl.cpp)
+target_include_directories(PRL PUBLIC ${Boost_INCLUDE_DIRS})
+# target_link_libraries(DEMGEN "${TORCH_LIBRARIES}")
+set_property(TARGET PRL PROPERTY CXX_STANDARD 14)
+
 # The following code block is suggested to be used on Windows.
 # According to https://github.com/pytorch/pytorch/issues/25457,
 # the DLLs need to be copied to avoid memory errors.

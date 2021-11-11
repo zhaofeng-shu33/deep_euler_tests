@@ -292,7 +292,7 @@ int main() {
 	int step_list_length = (sizeof(dem_step_list) / sizeof(*dem_step_list));
 	std::regex _regex(".txt");
 	ofstream clock_of(time_counting_file_name);
-	double t_stop = 25.0;
+	double t_stop = 15.0;
 	for (int i = 0; i < step_list_length; i++) {
 		std::string file_name_i = std::regex_replace(file_name, _regex, std::to_string(i) + ".txt");
 		std::string file_name_normal_euler_i = std::regex_replace(file_name_normal_euler, _regex, std::to_string(i) + ".txt");
