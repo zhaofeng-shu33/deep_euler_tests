@@ -51,7 +51,7 @@ if __name__ == '__main__':
 
         for i in range(total_index):
             dem = np.loadtxt(f'{base_load_dir}/lotka_dem{i}.txt')
-            dem_generalized = np.loadtxt(f'{base_load_dir}/lotka_dem_generalized{i}.txt')    
+            dem_generalized = np.loadtxt(f'{base_load_dir}/lotka_dem{i}_generalized.txt')    
             euler = np.loadtxt(f'{base_load_dir}/lotka_euler{i}.txt')
             error_dem = l2_error(sol, dem)
             error_euler = l2_error(sol, euler)

@@ -28,81 +28,13 @@ string model_file = "../../training/traced_range_model_e20_2021_11_04.pt";
 typedef double value_type;
 typedef vector<value_type> state_type;
 
-struct std_scaler {
-	torch::Tensor mean;
-	torch::Tensor scale;
 
-	torch::Tensor operator()(torch::Tensor tensor) {
-		return (tensor - mean) / scale;
-	}
-	torch::Tensor inverse_transform(torch::Tensor tensor) {
-		return tensor * scale + mean;
-	}
-	void parse(istream& is) {
-		mean = torch::ones({ 1, nn_inputs });
-		is.get();
-		double temp = 0.0;
-		for (int i = 0; i < nn_inputs; i++) {
-			is >> temp;
-			mean[0][i] = temp;
-		}
-		is.get();
-		is.get();
-		scale = torch::ones({ 1, nn_inputs });
-		is.get();
-		for (int i = 0; i < nn_inputs; i++) {
-			is >> temp;
-			scale[0][i] = temp;
-		}
-		is.get();
-		is.get();
-	}
-};
-
-struct norm_scaler {
-	torch::Tensor data_min;
-	torch::Tensor data_max;
-	double min = 0;
-	double max = 0;
-
-	torch::Tensor operator()(torch::Tensor tensor) {
-		torch::Tensor X_std = (tensor - data_min) / (data_max - data_min);
-		return X_std * (max - min) + min;
-	}
-	torch::Tensor inverse_transform(torch::Tensor tensor) {
-		torch::Tensor Y_std = (tensor - min) / (max - min);
-		return Y_std * (data_max - data_min) + data_min;
-	}
-	void parse(istream& is) {
-		data_min = torch::ones({ 1,nn_outputs });
-		is.get();
-		double temp = 0.0;
-		for (int i = 0; i < nn_outputs; i++) {
-			is >> temp;
-			data_min[0][i] = temp;
-		}
-		is.get();
-		is.get();
-		data_max = torch::ones({ 1, nn_outputs });
-		is.get();
-		for (int i = 0; i < nn_outputs; i++) {
-			is >> temp;
-			data_max[0][i] = temp;
-		}
-		is.get(); //']'
-		is.get(); //'\n'
-		is >> min;
-		is >> max;
-	}
-};
 
 //ode function of bubble dynamic
 class lotka {
 public:
 	torch::jit::script::Module model; //the neural network
 	torch::Tensor inputs; //reused tensor of inputs
-	std_scaler std_transf;
-	norm_scaler nrm_transf;
 
 	lotka(std::array<double, nn_inputs> inital_values) {
 
