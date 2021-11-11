@@ -16,5 +16,5 @@ The same scheme was proposed in the paper [Hypersolvers: Toward Fast Continuous-
 For example:
 
 ```cmd
-cmake -DCMAKE_TOOLCHAIN_FILE=C:/Users/z50019165/Documents/repos/vcpkg/scripts/buildsystems/vcpkg.cmake -DTorch_DIR=C:\Users\z50019165\Miniconda3\envs\spinningup\Lib\site-packages\torch\share\cmake\Torch\ ..
+cmake -DCMAKE_TOOLCHAIN_FILE=C:/Users/z50019165/Documents/repos/vcpkg/scripts/buildsystems/vcpkg.cmake -DTorch_DIR=C:\Users\z50019165\Miniconda3\Lib\site-packages\torch\share\cmake\Torch ..
 ```

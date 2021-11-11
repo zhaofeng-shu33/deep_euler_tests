@@ -11,6 +11,7 @@
 
 #include <boost/program_options.hpp>
 #include <torch/script.h>
+#include <ATen/ATen.h>
 
 using namespace std;
 
@@ -23,7 +24,7 @@ c10::TensorOptions global_tensor_op;
 string file_name = "../lotka_dem.txt";
 string file_name_normal_euler = "../lotka_euler.txt";
 string time_counting_file_name = "../clock.txt";
-string model_file = "../../training/traced_model_e20_2021_11_04.pt";
+string model_file = "../../training/traced_model_e1_2021_11_11.pt";
 string embedded_model_file = "../../training/traced_range_embedded_model_e22_2021_11_10.pt";
 static bool use_embedded = false;
 
@@ -65,7 +66,7 @@ public:
 		}
 		catch (const c10::Error& e) {
 			std::cerr << "Error loading the model: " << e.what() << endl;
-			exit(-1);
+		//	exit(-1);
 		}
 		std::cout << "43" << endl;
 	}
@@ -183,6 +184,17 @@ public:
 		}
 	}
 
+	// output sol_t and sol
+	void output(ofstream& out) {
+		for (int i = 0; i < max_l; i++) {
+			out << sol_t[i];
+			for (int j = 0; j < order; j++) {
+				out << ' ' << sol[i][j];
+			}
+			out << '\n';
+		}
+	}
+
 	~ODESolver(){
 		free(init_conds);
 		free(derivative);
@@ -253,24 +265,28 @@ int main(int argc, const char* argv[]) {
 		double t_start = 0.0;
 		lotka bubi(initial_inputs);
 		
-		ODESolver solver(nn_outputs);
+		ODESolver solver(nn_outputs), solver_2(nn_outputs);
 		solver.setInitialCondition(x, 0.0);
 		solver.setTimeStep(dem_step_list[i]);
 		solver.setStepNumber(int(t_stop/ dem_step_list[i]));
-		//cin.get();
+
 		std::cout << "Solving..." << endl;
 		auto t1 = chrono::high_resolution_clock::now();
-		solver.solve(bubi);
+		// solver.solve(bubi);
 		auto t2 = chrono::high_resolution_clock::now();
 		// std::cout << "DEM Time (ms):" << std::chrono::duration_cast<std::chrono::milliseconds>(t2 - t1).count() << endl;
 		clock_of << std::chrono::duration_cast<std::chrono::microseconds>(t2 - t1).count();
-		solver.setTimeStep(euler_step_list[i]);
-		solver.setStepNumber(int(t_stop / euler_step_list[i]));
+		solver.output(ofs);
+
+		solver_2.setInitialCondition(x, 0.0);
+		solver_2.setTimeStep(euler_step_list[i]);
+		solver_2.setStepNumber(int(t_stop / euler_step_list[i]));
 		t1 = chrono::high_resolution_clock::now();
-		solver.solve_normal(bubi, ofs_2);
+		solver_2.solve_normal(bubi, ofs_2);
 		t2 = chrono::high_resolution_clock::now();
 		// std::cout << "EM Time (ms):" << std::chrono::duration_cast<std::chrono::milliseconds>(t2 - t1).count() << endl;
 		clock_of << ' ' << std::chrono::duration_cast<std::chrono::microseconds>(t2 - t1).count() << endl;
+		solver_2.output(ofs_2);
 		ofs.flush();
 		ofs.close();
 		ofs_2.flush();
