@@ -11,7 +11,6 @@
 
 #include <boost/program_options.hpp>
 #include <torch/script.h>
-#include <ATen/ATen.h>
 
 using namespace std;
 
@@ -39,7 +38,6 @@ typedef vector<value_type> state_type;
 class lotka {
 //	std::ofstream outputs_out;
 public:
-	torch::jit::script::Module model; //the neural network
 	torch::Tensor inputs; //reused tensor of inputs
 
 	lotka(std::array<double, nn_inputs> inital_values) {
@@ -49,48 +47,12 @@ public:
 		//model inputs: dt x1 x2 x3 z... x1now x2now x3now
 		for (int i = 0; i < nn_inputs; i++) inputs[0][i] = inital_values[i];
 		//outputs: z... grad_z(wall)
-
-		try {
-			if (use_embedded) {
-				model = torch::jit::load(embedded_model_file);
-			}
-			else {
-				model = torch::jit::load(model_file);
-			}
-			std::vector<torch::jit::IValue> inp;
-			inp.push_back(torch::ones({ 1, nn_inputs }, global_tensor_op));
-			std::cout << inp << endl;
-			// Execute the model and turn its output into a tensor.
-			at::Tensor output = model.forward(inp).toTensor().detach();
-			std::cout << output << endl;
-		}
-		catch (const c10::Error& e) {
-			std::cerr << "Error loading the model: " << e.what() << endl;
-		//	exit(-1);
-		}
-		std::cout << "43" << endl;
 	}
+
 
 	/*Rewrites the errors array with the predicted local truncation errors*/
 	double* local_error(double t, double t_next, const double* x, double* errors) {
 
-		//updating inputs
-		inputs[0][0] = t_next;
-		inputs[0][1] = t;
-		for (int i = 0; i < nn_inputs - 2; i++) {
-			inputs[0][i + 2] = x[i];
-		}
-		std::vector<torch::jit::IValue> inps;
-		inps.push_back(inputs);
-		//evaluating
-		torch::Tensor loc_trun_err = model.forward(inps).toTensor().detach(); 
-
-		//log outputs
-		for (int i = 0; i < nn_outputs; i++) {
-			errors[i] = loc_trun_err[0][i].item<double>();
-			// outputs_out << errors[i] << " ";
-		}
-		// outputs_out << endl;
 		return errors;
 	}
 
@@ -131,9 +93,9 @@ public:
 
 	bool setStepNumber(int steps) {
 		max_l = steps;
-		sol_t = (double*)malloc(sizeof(double) * max_l);
-		sol = new double* [max_l];
-		for (int i = 0; i < max_l; i++)
+		sol_t = (double*)malloc(sizeof(double) * (max_l + 1));
+		sol = new double* [max_l + 1];
+		for (int i = 0; i < max_l + 1; i++)
 			sol[i] = new double[order];
 		return true;
 	}
@@ -153,7 +115,7 @@ public:
 			lot.local_error(t, t + delta_t, sol[l], local_error); // fill the local_error
 			lot(t, sol[l], derivative); // fill the derivative
 			for (int j = 0; j < order; j++) {
-				sol[l][j + 1] = sol[l][j] + delta_t * derivative[j] + delta_t * delta_t * local_error[j];
+				sol[l+1][j] = sol[l][j] + delta_t * derivative[j] + delta_t * delta_t * local_error[j];
 			}
 			l++;
 			t += delta_t;
@@ -176,7 +138,7 @@ public:
 		while (l < max_l) {
 			lot(t, sol[l], derivative); // fill the derivative
 			for (int j = 0; j < order; j++) {
-				sol[l][j + 1] = sol[l][j] + delta_t * derivative[j];
+				sol[l + 1][j] = sol[l][j] + delta_t * derivative[j];
 			}
 			l++;
 			t += delta_t;
@@ -199,7 +161,7 @@ public:
 		free(init_conds);
 		free(derivative);
 		free(sol_t);
-		for (int indx = 0; indx < max_l; ++indx)
+		for (int indx = 0; indx <= max_l; ++indx)
 		{
 			delete sol[indx];
 		}
@@ -255,7 +217,7 @@ int main(int argc, const char* argv[]) {
 
 		ofstream ofs(file_name_i);
 		setup_ofstream(ofs);
-		std::cout << "Writing file: " << file_name << endl;
+		std::cout << "Writing file: " << file_name_i << endl;
 		ofstream ofs_2(file_name_normal_euler_i);
 		setup_ofstream(ofs_2);
 
@@ -272,7 +234,7 @@ int main(int argc, const char* argv[]) {
 
 		std::cout << "Solving..." << endl;
 		auto t1 = chrono::high_resolution_clock::now();
-		// solver.solve(bubi);
+		solver.solve(bubi);
 		auto t2 = chrono::high_resolution_clock::now();
 		// std::cout << "DEM Time (ms):" << std::chrono::duration_cast<std::chrono::milliseconds>(t2 - t1).count() << endl;
 		clock_of << std::chrono::duration_cast<std::chrono::microseconds>(t2 - t1).count();
