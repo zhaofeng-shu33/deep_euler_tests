@@ -40,48 +40,40 @@ if __name__ == '__main__':
         base_load_dir = 'build'
         time_array = np.loadtxt(f'{base_load_dir}/clock.txt')
         time_array_generalized = np.loadtxt(f'{base_load_dir}/clock_generalized.txt')
+        time_array_embedded = np.loadtxt(f'{base_load_dir}/clock_generalized.txt')
         total_index = 4
 
-        t_list_dem = []
-        error_list_dem = []
-        t_list_dem_generalized = []
-        error_list_dem_generalized = []
-        t_list_euler = []
-        error_list_euler = []
-
-        for i in range(total_index):
-            dem = np.loadtxt(f'{base_load_dir}/lotka_dem{i}.txt')
-            dem_generalized = np.loadtxt(f'{base_load_dir}/lotka_dem{i}_generalized.txt')    
-            euler = np.loadtxt(f'{base_load_dir}/lotka_euler{i}.txt')
-            error_dem = l2_error(sol, dem)
-            error_euler = l2_error(sol, euler)
-            error_dem_generalized = l2_error(sol, dem_generalized)
-            time_dem = time_array[i, 0]
-            time_dem_generalized = time_array_generalized[i, 0]
-            time_euler = time_array[i, 1]
-            error_list_dem.append(error_dem)
-            error_list_dem_generalized.append(error_dem_generalized)
-            error_list_euler.append(error_euler)
-            t_list_dem.append(time_dem)
-            t_list_dem_generalized.append(time_dem_generalized)
-            t_list_euler.append(time_euler)
-
-        
-        plt.scatter(error_list_dem, t_list_dem, label='dem')
-        plt.scatter(error_list_euler, t_list_euler, label='euler')
-        plt.xlabel('error')
-        plt.ylabel('time')
-        plt.title('dem vs euler')
-        plt.legend()
-
-        plt.figure()
-        plt.scatter(error_list_dem_generalized, t_list_dem_generalized, label='dem')
-        plt.scatter(error_list_euler, t_list_euler, label='euler')
-        plt.xlabel('error')
-        plt.ylabel('time')
-        plt.title('dem generalized vs euler')
-        plt.legend()
-        plt.savefig('build/dem_euler_comparison.pdf')
+        label_list = ['dem', 'dem generalized', 'dem embedded']
+        file_suffix_list = ['.txt', '_generalized.txt', '_embedded.txt']
+        for j in range(3):
+            t_list_dem = []
+            error_list_dem = []
+            t_list_euler = []
+            error_list_euler = []
+            file_suffix = file_suffix_list[j]
+            clock_file_name = f'{base_load_dir}/clock{file_suffix}'
+            time_array = np.loadtxt(f'{base_load_dir}/clock.txt')
+            for i in range(total_index):
+                dem = np.loadtxt(f'{base_load_dir}/lotka_dem{i}{file_suffix}')
+                euler = np.loadtxt(f'{base_load_dir}/lotka_euler{i}.txt')
+                error_dem = l2_error(sol, dem)
+                error_euler = l2_error(sol, euler)
+                time_dem = time_array[i, 0]
+                time_euler = time_array[i, 1]
+                error_list_dem.append(error_dem)
+                error_list_euler.append(error_euler)
+                t_list_dem.append(time_dem)
+                t_list_euler.append(time_euler)
+            label_ = label_list[j]
+            plt.figure(j)
+            plt.scatter(error_list_dem, t_list_dem, label=label_)
+            plt.scatter(error_list_euler, t_list_euler, label='euler')
+            plt.xlabel('error')
+            plt.ylabel('time')
+            plt.title(f'{label_} vs euler')
+            plt.legend()
+            plt.savefig(f'build/euler_comparison_with{file_suffix}.pdf')
+    
         plt.show()
 
 
