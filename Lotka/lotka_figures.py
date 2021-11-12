@@ -52,7 +52,7 @@ if __name__ == '__main__':
             error_list_euler = []
             file_suffix = file_suffix_list[j]
             clock_file_name = f'{base_load_dir}/clock{file_suffix}'
-            time_array = np.loadtxt(f'{base_load_dir}/clock.txt')
+            time_array = np.loadtxt(clock_file_name)
             for i in range(total_index):
                 dem = np.loadtxt(f'{base_load_dir}/lotka_dem{i}{file_suffix}')
                 euler = np.loadtxt(f'{base_load_dir}/lotka_euler{i}.txt')
@@ -66,10 +66,10 @@ if __name__ == '__main__':
                 t_list_euler.append(time_euler)
             label_ = label_list[j]
             plt.figure(j)
-            plt.scatter(error_list_dem, t_list_dem, label=label_)
-            plt.scatter(error_list_euler, t_list_euler, label='euler')
+            plt.scatter(error_list_dem, np.log(t_list_dem), label=label_)
+            plt.scatter(error_list_euler, np.log(t_list_euler), label='euler')
             plt.xlabel('error')
-            plt.ylabel('time')
+            plt.ylabel('log(time)')
             plt.title(f'{label_} vs euler')
             plt.legend()
             plt.savefig(f'build/euler_comparison_with{file_suffix}.pdf')
