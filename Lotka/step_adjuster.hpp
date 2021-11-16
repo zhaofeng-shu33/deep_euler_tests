@@ -8,7 +8,35 @@
 namespace boost {
 namespace numeric {
 namespace odeint {
+    double norm(const std::vector<double>& y) {
+        size_t n = boost::size(y);
+        double _norm = 0.0;
+        for (int i = 0; i < n; i++) {
+            _norm += pow(y[i], 2.0);
+        }
+        _norm = sqrt(_norm / n);
+        return _norm;
+    }
 
+    template<class value_type, class System, class State>
+    value_type select_initial_step(System fun, value_type t0, State& y0, size_t order, value_type rtol, value_type atol) {
+        // create local State to hold values
+        state_wrapper< State > y_val, f0, tmp_err;
+        range_algebra algebra;
+        // resize it
+        adjust_size_by_resizeability(y_val, y0, typename is_resizeable<State>::type());
+        adjust_size_by_resizeability(tmp_err, y0, typename is_resizeable<State>::type());
+        boost::numeric::odeint::copy(y0, y_val.m_v);
+        adjust_size_by_resizeability(f0, y0, typename is_resizeable<State>::type());
+        // compute f0
+        fun(y_val.m_v, f0.m_v, t0);
+        // use for_each to compute the scale vector
+        boost::numeric::odeint::copy(y0, tmp_err.m_v);
+        algebra.for_each3(tmp_err.m_v, y_val.m_v, y_val.m_v,
+            default_operations::rel_error< value_type >(atol, rtol, 1.0, 0.0));
+        value_type d0 = norm(tmp_err.m_v);
+        return (double)1.0;
+    }
 
 
 template< typename Value, typename Time >

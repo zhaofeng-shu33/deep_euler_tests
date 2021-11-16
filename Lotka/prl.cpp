@@ -36,9 +36,9 @@ struct push_back_state_and_time
 int main() {
     const double y1_0 = 1 / pow(3.0, 2.0 / 3) / tgamma(2.0 / 3);
     const double y0_0 = -1 / pow(3.0, 1.0 / 3) / tgamma(1.0 / 3);
-    state_type x(2);
-    x[0] = y0_0; // initial value
-    x[1] = y1_0;
+    state_type y(2);
+    y[0] = y0_0; // initial value
+    y[1] = y1_0;
     double abs_err = 1.0e-6, rel_err = 1.0e-3, a_x = 1.0, a_dxdt = 0.0, max_dt = 100.0;
     double t_start = 0.0, t_end = 4.0;
     std::vector<state_type> x_vec;
@@ -47,8 +47,9 @@ int main() {
     controlled_stepper_type controlled_stepper(
         default_error_checker< double, range_algebra, default_operations >(abs_err, rel_err, a_x, a_dxdt),
         custom_step_adjuster<double, double>(max_dt));
+    double initial_step = select_initial_step(harmonic_oscillator, t_start, y, controlled_stepper.stepper().stepper_order(), rel_err, abs_err);
     size_t steps = integrate_adaptive(controlled_stepper, harmonic_oscillator,
-        x, t_start, t_end, 0.1, push_back_state_and_time(x_vec, times));
+        y, t_start, t_end, 0.1, push_back_state_and_time(x_vec, times));
     /* output */
     for (size_t i = 0; i <= steps; i++)
     {
