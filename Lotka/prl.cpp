@@ -7,7 +7,7 @@
 using namespace boost::numeric::odeint;
 typedef std::vector< double > state_type;
 typedef runge_kutta_dopri5< state_type > error_stepper_type;
-typedef controlled_runge_kutta< error_stepper_type, default_error_checker< double, range_algebra, default_operations >, custom_step_adjuster<double, double>> controlled_stepper_type;
+typedef custom_controlled_runge_kutta< error_stepper_type, default_error_checker< double, range_algebra, default_operations >, custom_step_adjuster<double, double>> controlled_stepper_type;
 const double gam = 0.15;
 
 /* The rhs of x' = f(x) */
