@@ -515,7 +515,7 @@ public:
             input_vec[0] = t;
             for (int i = 1; i <= m - 2; i++)
                 input_vec[i] = in[i - 1];
-            input_vec[m - 1] = std::log(m_error_checker.eps_abs());
+            
 
         /*
             std::vector<std::vector<double>> W1(3);
@@ -589,6 +589,7 @@ public:
         size_t n = boost::size(x);
         m = n + 2;
         input_vec.resize(m);
+        input_vec[m - 1] = std::log(m_error_checker.eps_abs());
         m_first_call = false;
     }
 
