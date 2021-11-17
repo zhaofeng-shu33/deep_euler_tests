@@ -47,7 +47,7 @@ int main() {
     controlled_stepper_type controlled_stepper(
         default_error_checker< double, range_algebra, default_operations >(abs_err, rel_err, a_x, a_dxdt),
         custom_step_adjuster<double, double>(max_dt));
-    double initial_step = select_initial_step(harmonic_oscillator, t_start, y, controlled_stepper.stepper().stepper_order(), rel_err, abs_err);
+    double initial_step = select_initial_step(harmonic_oscillator, t_start, y, controlled_stepper.stepper().error_order(), rel_err, abs_err);
     size_t steps = integrate_adaptive(controlled_stepper, harmonic_oscillator,
         y, t_start, t_end, 0.1, push_back_state_and_time(x_vec, times));
     /* output */

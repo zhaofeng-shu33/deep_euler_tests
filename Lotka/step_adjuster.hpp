@@ -8,34 +8,79 @@
 namespace boost {
 namespace numeric {
 namespace odeint {
-    double norm(const std::vector<double>& y) {
+    double scale_norm(const std::vector<double>& y, const std::vector<double>& scale) {
         size_t n = boost::size(y);
         double _norm = 0.0;
         for (int i = 0; i < n; i++) {
-            _norm += pow(y[i], 2.0);
+            _norm += pow(y[i] / scale[i], 2.0);
         }
         _norm = sqrt(_norm / n);
         return _norm;
     }
+    /*
+    template<class value_type, class State>
+    value_type scale_norm(State& y, State& scale) {
+        value_type _norm = 0.0;
+        detail::for_each2(boost::begin(y), boost::end(y),
+            boost::begin(scale), [](auto& y_i, auto& scale_i) { _norm += y_i / scale_i });
+    }
+    */
+    template< class Fac1 = double >
+    struct custom_scale_sum
+    {
+        const Fac1 m_alpha1, m_alpha2;
+
+        custom_scale_sum(Fac1 alpha1, Fac1 alpha2) : m_alpha1(alpha1), m_alpha2(alpha2) { }
+
+        template< class T1, class T2 >
+        void operator()(T1& t1, const T2& t2) const
+        {
+            t1 = m_alpha1 * std::abs(t2) + m_alpha2;
+        }
+
+        typedef void result_type;
+    };
 
     template<class value_type, class System, class State>
     value_type select_initial_step(System fun, value_type t0, State& y0, size_t order, value_type rtol, value_type atol) {
         // create local State to hold values
-        state_wrapper< State > y_val, f0, tmp_err;
+        state_wrapper< State > f0, f1, scale, tmp_err;
         range_algebra algebra;
         // resize it
-        adjust_size_by_resizeability(y_val, y0, typename is_resizeable<State>::type());
+        adjust_size_by_resizeability(scale, y0, typename is_resizeable<State>::type());
         adjust_size_by_resizeability(tmp_err, y0, typename is_resizeable<State>::type());
-        boost::numeric::odeint::copy(y0, y_val.m_v);
         adjust_size_by_resizeability(f0, y0, typename is_resizeable<State>::type());
+        adjust_size_by_resizeability(f1, y0, typename is_resizeable<State>::type());
         // compute f0
-        fun(y_val.m_v, f0.m_v, t0);
-        // use for_each to compute the scale vector
-        boost::numeric::odeint::copy(y0, tmp_err.m_v);
-        algebra.for_each3(tmp_err.m_v, y_val.m_v, y_val.m_v,
-            default_operations::rel_error< value_type >(atol, rtol, 1.0, 0.0));
-        value_type d0 = norm(tmp_err.m_v);
-        return (double)1.0;
+        fun(y0, f0.m_v, t0);
+        // using for_each to compute the scale vector
+        algebra.for_each2(scale.m_v, y0,
+            custom_scale_sum< value_type >(rtol, atol));
+        // compute d0, d1
+        value_type d0 = scale_norm(y0, scale.m_v);
+        value_type d1 = scale_norm(f0.m_v, scale.m_v);
+        // h0
+        value_type h0 = 0.01 * d0 / d1;
+        if (d0 < 1e-5 || d1 < 1e-5) {
+            h0 = 1e-6;
+        }
+        algebra.for_each3(tmp_err.m_v, y0, f0.m_v,
+            default_operations::scale_sum2< value_type >(1.0, h0));
+        // tmp_err.m_v becomes y1 now
+        State& y1 = tmp_err.m_v;
+        // compute f1
+        fun(y1, f1.m_v, t0 + h0);
+        algebra.for_each3(tmp_err.m_v, f1.m_v, f0.m_v,
+            default_operations::scale_sum2< value_type >(1.0, -1.0));
+        value_type d2 = scale_norm(tmp_err.m_v, scale.m_v) / h0;
+        value_type h1;
+        if (d1 <= 1e-15 || d2 <= 1e-15) {
+            h1 = std::max(1e-6, h0 * 1e-3);
+        }
+        else {
+            h1 = pow(0.01 / std::max(d1, d2), 1.0 / (order + 1));
+        }
+        return std::min(100 * h0, h1);
     }
 
 
