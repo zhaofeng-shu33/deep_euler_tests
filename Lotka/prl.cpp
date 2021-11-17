@@ -2,6 +2,7 @@
 #include <boost/math/special_functions/gamma.hpp>
 #include <iostream>
 #include <vector>
+#include <chrono>
 #define _USE_MATH_DEFINES
 #include <math.h>
 #include "step_adjuster.hpp"
@@ -44,18 +45,32 @@ int main() {
     double t_start = 0.0, t_end = 2 * M_PI;
     std::vector<state_type> x_vec;
     std::vector<double> times;
-
+    bool use_nn = false;
     controlled_stepper_type controlled_stepper(
         custom_error_checker< double, range_algebra, default_operations >(abs_err, rel_err, a_x, a_dxdt),
         custom_step_adjuster<double, double>(max_dt),
         controlled_stepper_type::stepper_type(),
-        true);
+        use_nn);
     double initial_step = select_initial_step(spiral_problem, t_start, y, controlled_stepper.stepper().error_order(), rel_err, abs_err);
     size_t steps = integrate_adaptive(controlled_stepper, spiral_problem,
         y, t_start, t_end, initial_step, push_back_state_and_time(x_vec, times));
+    size_t repeat_time = 1000;
+
+    long int_ns = 0;
+    for (int i = 0; i < repeat_time; i++) {
+        y[0] = y0_0; // reset initial value
+        y[1] = y1_0;
+        auto t1 = std::chrono::high_resolution_clock::now();
+        steps = integrate_adaptive(controlled_stepper, spiral_problem,
+            y, t_start, t_end, initial_step);
+        auto t2 = std::chrono::high_resolution_clock::now();
+        int_ns += std::chrono::duration_cast<std::chrono::microseconds>(t2 - t1).count();
+    }
+    double average_time = int_ns * 1.0 / repeat_time;
     /* output */
     for (size_t i = 0; i <= steps; i++)
     {
         std::cout << std::setprecision(7) << times[i] << '\t' << x_vec[i][0] << '\t' << x_vec[i][1] << '\n';
     }
+    std::cout << average_time << std::endl;
 }
