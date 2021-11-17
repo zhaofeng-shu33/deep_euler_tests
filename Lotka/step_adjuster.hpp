@@ -286,10 +286,11 @@ public:
     custom_controlled_runge_kutta(
         const error_checker_type& error_checker = error_checker_type(),
         const step_adjuster_type& step_adjuster = step_adjuster_type(),
-        const stepper_type& stepper = stepper_type()
+        const stepper_type& stepper = stepper_type(),
+        bool use_nn = false
     )
         : m_stepper(stepper), m_error_checker(error_checker), m_step_adjuster(step_adjuster),
-        m_first_call(true)
+        m_first_call(true), m_use_nn(use_nn)
     { }
 
     /*
@@ -462,25 +463,32 @@ public:
             dt = step_adjuster.get_max_dt();
             return fail;
         }
+        value_type max_rel_err;
+        if (!m_use_nn) {
+            m_xerr_resizer.adjust_size(in, detail::bind(&custom_controlled_runge_kutta::template resize_m_xerr_impl< StateIn >, detail::ref(*this), detail::_1));
 
-        m_xerr_resizer.adjust_size(in, detail::bind(&custom_controlled_runge_kutta::template resize_m_xerr_impl< StateIn >, detail::ref(*this), detail::_1));
+            //fsal: m_stepper.get_dxdt( dxdt );
+            //fsal: m_stepper.do_step( sys , x , dxdt , t , dt , m_x_err );
+            m_stepper.do_step(system, in, dxdt_in, t, out, dxdt_out, dt, m_xerr.m_v);
 
-        //fsal: m_stepper.get_dxdt( dxdt );
-        //fsal: m_stepper.do_step( sys , x , dxdt , t , dt , m_x_err );
-        m_stepper.do_step(system, in, dxdt_in, t, out, dxdt_out, dt, m_xerr.m_v);
+            // this potentially overwrites m_x_err! (standard_error_checker does, at least)
+            max_rel_err = m_error_checker.error(m_stepper.algebra(), in, out, m_xerr.m_v, dt);
 
-        // this potentially overwrites m_x_err! (standard_error_checker does, at least)
-        value_type max_rel_err = m_error_checker.error(m_stepper.algebra(), in, out, m_xerr.m_v, dt);
-
-        if (max_rel_err > 1.0)
-        {
-            // error too big, decrease step size and reject this step
-            dt = step_adjuster.adjust_step(dt, max_rel_err, m_stepper.stepper_order());
-            return fail;
+            if (max_rel_err > 1.0)
+            {
+                // error too big, decrease step size and reject this step
+                dt = step_adjuster.adjust_step(dt, max_rel_err, m_stepper.stepper_order());
+                return fail;
+            }
+        }
+        else {
+            m_stepper.do_step(system, in, dxdt_in, t, out, dxdt_out, dt);
         }
         // otherwise, increase step size and accept
         t += dt;
-        dt = step_adjuster.adjust_step(dt, max_rel_err, m_stepper.stepper_order());
+        if (!m_use_nn) {
+            dt = step_adjuster.adjust_step(dt, max_rel_err, m_stepper.stepper_order());
+        }
         return success;
     }
 
@@ -620,6 +628,7 @@ private:
     wrapped_state_type m_xnew;
     wrapped_deriv_type m_dxdtnew;
     bool m_first_call;
+    bool m_use_nn;
 };
 
 } // odeint
