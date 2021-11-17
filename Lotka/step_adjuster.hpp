@@ -293,7 +293,30 @@ public:
     )
         : m_stepper(stepper), m_error_checker(error_checker), m_step_adjuster(step_adjuster),
         m_first_call(true), m_use_nn(use_nn)
-    { }
+    { 
+        if (m_use_nn) {
+            // construct W1, b1, W2, b2
+            cnpy::npz_t _npz = cnpy::npz_load("model-NNController-DP5-Spiral-IController-2021-11-17-6400.npz");
+            size_t input_size = _npz["W1"].shape[1];
+            hidden_num = _npz["b1"].shape[0];
+            double* _W1 = _npz["W1"].data<double>();
+            double* _W2 = _npz["W2"].data<double>();
+            double* _b1 = _npz["b1"].data<double>();
+            size_t w1_size = input_size * hidden_num;
+            // W1.resize(w1_size);
+            // W2.resize(hidden_num);
+            // b1.resize(hidden_num);
+            b2 = *_npz["b2"].data<double>();
+            std::copy(_W1, _W1 + w1_size, back_inserter(W1));
+            std::copy(_W2, _W2 + hidden_num, back_inserter(W2));
+            std::copy(_b1, _b1 + hidden_num, back_inserter(b1));
+            // memcpy(W1, _npz["W1"].data<double>(), (input_size * hidden_num) * sizeof(double));
+            // memcpy(W2, _npz["W2"].data<double>(), hidden_num * sizeof(double));
+            // memcpy(b1, _npz["b1"].data<double>(), hidden_num * sizeof(double));
+
+            tmp_vec.resize(hidden_num);
+        }
+    }
 
     /*
      * Version 1 : try_step( sys , x , t , dt )
@@ -488,18 +511,12 @@ public:
             m_stepper.do_step(system, in, dxdt_in, t, out, dxdt_out, dt);
             // update dt_tmp;
             // concatenate the input
-            size_t n = boost::size(in);
-            std::vector<double> input_vec(n + 2), tmp_vec(3);
+
             input_vec[0] = t;
-            for (int i = 1; i <= n; i++)
+            for (int i = 1; i <= m - 2; i++)
                 input_vec[i] = in[i - 1];
-            input_vec[n + 1] = std::log(m_error_checker.eps_abs());
-            // construct W1, b1, W2, b2
-            cnpy::npz_t _npz = cnpy::npz_load("model-NNController-DP5-Spiral-IController-2021-11-17-6400.npz");
-            double* W1 = _npz["W1"].data<double>();
-            double* W2 = _npz["W2"].data<double>();
-            double* b1 = _npz["b1"].data<double>();
-            double* b2 = _npz["b2"].data<double>();
+            input_vec[m - 1] = std::log(m_error_checker.eps_abs());
+
         /*
             std::vector<std::vector<double>> W1(3);
             W1[0] = { 5.8565e-01,  8.5635e-01, -5.6005e-04, -1.4520e+00 };
@@ -511,17 +528,18 @@ public:
         */
             dt_tmp = 0;
             // computation
-            for (int i = 0; i < 3; i++) {
-                for (int j = 0; j < 4; j++) {
-                    tmp_vec[i] += W1[i * 4 + j] * input_vec[j];
+            for (int i = 0; i < hidden_num; i++) {
+                for (int j = 0; j < m; j++) {
+                    tmp_vec[i] += W1[i * m + j] * input_vec[j];
                 }
                 tmp_vec[i] += b1[i];
                 tmp_vec[i] = std::max(0.0, tmp_vec[i]);
             }
-            for (int i = 0; i < 3; i++) {
+            for (int i = 0; i < hidden_num; i++) {
                 dt_tmp += tmp_vec[i] * W2[i];
+                tmp_vec[i] = 0;
             }
-            dt_tmp += *b2;
+            dt_tmp += b2;
         }
         // otherwise, increase step size and accept
         t += dt;
@@ -568,6 +586,9 @@ public:
     {
         typename odeint::unwrap_reference< System >::type& sys = system;
         sys(x, m_dxdt.m_v, t);
+        size_t n = boost::size(x);
+        m = n + 2;
+        input_vec.resize(m);
         m_first_call = false;
     }
 
@@ -671,6 +692,14 @@ private:
     wrapped_deriv_type m_dxdtnew;
     bool m_first_call;
     bool m_use_nn;
+    size_t hidden_num;
+    size_t m;
+    std::vector<double> W1;
+    std::vector<double> W2;
+    std::vector<double> b1;
+    double b2;
+    std::vector<double> input_vec;
+    std::vector<double> tmp_vec;
 };
 
 } // odeint
