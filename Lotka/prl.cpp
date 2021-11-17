@@ -40,14 +40,16 @@ int main() {
     state_type y(2);
     y[0] = y0_0; // initial value
     y[1] = y1_0;
-    double abs_err = 1.0e-6, rel_err = 1.0e-3, a_x = 1.0, a_dxdt = 0.0, max_dt = 100.0;
+    double abs_err = 1.0e-6, rel_err = 0.0, a_x = 1.0, a_dxdt = 0.0, max_dt = 100.0;
     double t_start = 0.0, t_end = 2 * M_PI;
     std::vector<state_type> x_vec;
     std::vector<double> times;
 
     controlled_stepper_type controlled_stepper(
         custom_error_checker< double, range_algebra, default_operations >(abs_err, rel_err, a_x, a_dxdt),
-        custom_step_adjuster<double, double>(max_dt));
+        custom_step_adjuster<double, double>(max_dt),
+        controlled_stepper_type::stepper_type(),
+        true);
     double initial_step = select_initial_step(spiral_problem, t_start, y, controlled_stepper.stepper().error_order(), rel_err, abs_err);
     size_t steps = integrate_adaptive(controlled_stepper, spiral_problem,
         y, t_start, t_end, initial_step, push_back_state_and_time(x_vec, times));

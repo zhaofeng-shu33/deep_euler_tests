@@ -24,8 +24,11 @@ target_link_libraries(DEM Boost::program_options)
 set_property(TARGET DEM PROPERTY CXX_STANDARD 14)
 
 
-add_executable(PRL prl.cpp)
+add_executable(PRL prl.cpp cnpy.cpp)
+find_package(ZLIB REQUIRED)
+include_directories(${ZLIB_INCLUDE_DIRS})
 target_include_directories(PRL PUBLIC ${Boost_INCLUDE_DIRS})
+target_link_libraries(PRL PRIVATE ZLIB::ZLIB)
 set_property(TARGET PRL PROPERTY CXX_STANDARD 14)
 
 # The following code block is suggested to be used on Windows.

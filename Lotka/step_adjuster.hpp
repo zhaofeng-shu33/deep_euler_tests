@@ -1,6 +1,6 @@
 #pragma once
 #include <cmath>
-
+#include"cnpy.h"
 
 
 #include <boost/numeric/odeint/stepper/controlled_runge_kutta.hpp>
@@ -162,7 +162,9 @@ public:
         //        typename operations_type::template maximum< value_type >() , static_cast< value_type >( 0 ) );
         return norm_l2(x_err);
     }
-
+    double eps_abs() {
+        return m_eps_abs;
+    }
 private:
 
     value_type m_eps_abs;
@@ -464,6 +466,7 @@ public:
             return fail;
         }
         value_type max_rel_err;
+        time_type dt_tmp;
         if (!m_use_nn) {
             m_xerr_resizer.adjust_size(in, detail::bind(&custom_controlled_runge_kutta::template resize_m_xerr_impl< StateIn >, detail::ref(*this), detail::_1));
 
@@ -483,11 +486,50 @@ public:
         }
         else {
             m_stepper.do_step(system, in, dxdt_in, t, out, dxdt_out, dt);
+            // update dt_tmp;
+            // concatenate the input
+            size_t n = boost::size(in);
+            std::vector<double> input_vec(n + 2), tmp_vec(3);
+            input_vec[0] = t;
+            for (int i = 1; i <= n; i++)
+                input_vec[i] = in[i - 1];
+            input_vec[n + 1] = std::log(m_error_checker.eps_abs());
+            // construct W1, b1, W2, b2
+            cnpy::npz_t _npz = cnpy::npz_load("model-NNController-DP5-Spiral-IController-2021-11-17-6400.npz");
+            double* W1 = _npz["W1"].data<double>();
+            double* W2 = _npz["W2"].data<double>();
+            double* b1 = _npz["b1"].data<double>();
+            double* b2 = _npz["b2"].data<double>();
+        /*
+            std::vector<std::vector<double>> W1(3);
+            W1[0] = { 5.8565e-01,  8.5635e-01, -5.6005e-04, -1.4520e+00 };
+            W1[1] = { 8.4926e-01,  1.2973e+00, -1.5792e-03, -1.9405e+00 };
+            W1[2] = { -2.3280e+00,  1.2488e-01, -6.4673e-01,  1.9431e-01};
+            std::vector<double> b1 = { -0.6449,  0.7079, -1.8980 };
+            std::vector<double> W2 = { -1.2358,  0.8171, -0.7117 };
+            double b2 = 0.1593;
+        */
+            dt_tmp = 0;
+            // computation
+            for (int i = 0; i < 3; i++) {
+                for (int j = 0; j < 4; j++) {
+                    tmp_vec[i] += W1[i * 4 + j] * input_vec[j];
+                }
+                tmp_vec[i] += b1[i];
+                tmp_vec[i] = std::max(0.0, tmp_vec[i]);
+            }
+            for (int i = 0; i < 3; i++) {
+                dt_tmp += tmp_vec[i] * W2[i];
+            }
+            dt_tmp += *b2;
         }
         // otherwise, increase step size and accept
         t += dt;
         if (!m_use_nn) {
             dt = step_adjuster.adjust_step(dt, max_rel_err, m_stepper.stepper_order());
+        }
+        else {
+            dt = std::exp(dt_tmp);
         }
         return success;
     }
