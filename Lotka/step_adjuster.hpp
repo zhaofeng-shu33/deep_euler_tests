@@ -8,11 +8,49 @@
 namespace boost {
 namespace numeric {
 namespace odeint {
+    namespace detail{
+        template< typename Value, class Iterator1 >
+        inline Value norm_l2(Iterator1 first1, Iterator1 last1, Value init, size_t n)
+        {
+            using std::max;
+            using std::abs;
+            for (; first1 != last1; first1++)
+                init += std::pow(*first1, 2);
+            return std::sqrt(init / n);
+        }
+    }
+    template< typename S >
+    static typename norm_result_type<S>::type norm_l2(const S& s)
+    {
+        size_t n = boost::size(s);
+        return detail::norm_l2(boost::begin(s), boost::end(s),
+            static_cast<typename norm_result_type<S>::type>(0), n);
+    }
+
+    template< class Fac1 = double >
+    struct rel_error
+    {
+        const Fac1 m_eps_abs, m_eps_rel, m_a_x, m_a_dxdt;
+
+        rel_error(Fac1 eps_abs, Fac1 eps_rel, Fac1 a_x, Fac1 a_dxdt)
+            : m_eps_abs(eps_abs), m_eps_rel(eps_rel), m_a_x(a_x), m_a_dxdt(a_dxdt) { }
+
+
+        template< class T1, class T2, class T3 >
+        void operator()(T3& t3, const T1& t1, const T2& t2) const
+        {
+            using std::abs;
+            set_unit_value(t3, abs(get_unit_value(t3)) / (m_eps_abs + m_eps_rel * (m_a_x * std::max(abs(get_unit_value(t1)), abs(get_unit_value(t2))) + m_a_dxdt * abs(get_unit_value(t2)))));
+        }
+
+        typedef void result_type;
+    };
+
     double scale_norm(const std::vector<double>& y, const std::vector<double>& scale) {
         size_t n = boost::size(y);
         double _norm = 0.0;
         for (int i = 0; i < n; i++) {
-            _norm += pow(y[i] / scale[i], 2.0);
+            _norm += std::pow(y[i] / scale[i], 2.0);
         }
         _norm = sqrt(_norm / n);
         return _norm;
@@ -78,11 +116,61 @@ namespace odeint {
             h1 = std::max(1e-6, h0 * 1e-3);
         }
         else {
-            h1 = pow(0.01 / std::max(d1, d2), 1.0 / (order + 1));
+            h1 = std::pow(0.01 / std::max(d1, d2), 1.0 / (order + 1));
         }
         return std::min(100 * h0, h1);
     }
 
+template
+    <
+    class Value,
+    class Algebra,
+    class Operations
+    >
+    class custom_error_checker
+{
+public:
+
+    typedef Value value_type;
+    typedef Algebra algebra_type;
+    typedef Operations operations_type;
+
+    custom_error_checker(
+        value_type eps_abs = static_cast<value_type>(1.0e-6),
+        value_type eps_rel = static_cast<value_type>(1.0e-6),
+        value_type a_x = static_cast<value_type>(1),
+        value_type a_dxdt = static_cast<value_type>(1))
+        : m_eps_abs(eps_abs), m_eps_rel(eps_rel), m_a_x(a_x), m_a_dxdt(a_dxdt)
+    { }
+
+
+    template< class State, class Deriv, class Err, class Time >
+    value_type error(const State& x_old, const Deriv& dxdt_old, Err& x_err, Time dt) const
+    {
+        return error(algebra_type(), x_old, dxdt_old, x_err, dt);
+    }
+
+    template< class State, class Deriv, class Err, class Time >
+    value_type error(algebra_type& algebra, const State& x_old, const Deriv& dxdt_old, Err& x_err, Time dt) const
+    {
+        using std::abs;
+        // this overwrites x_err !
+        algebra.for_each3(x_err, x_old, dxdt_old,
+            rel_error< value_type >(m_eps_abs, m_eps_rel, m_a_x, m_a_dxdt * abs(get_unit_value(dt))));
+
+        // value_type res = algebra.reduce( x_err ,
+        //        typename operations_type::template maximum< value_type >() , static_cast< value_type >( 0 ) );
+        return norm_l2(x_err);
+    }
+
+private:
+
+    value_type m_eps_abs;
+    value_type m_eps_rel;
+    value_type m_a_x;
+    value_type m_a_dxdt;
+
+};
 
 template< typename Value, typename Time >
 class custom_step_adjuster
@@ -114,18 +202,20 @@ public:
         return dt;
     }
 
-    time_type increase_step(time_type dt, value_type error, const int stepper_order) const
+    time_type adjust_step(time_type dt, value_type error, const int stepper_order) const
     {
         // returns the increased time step
         BOOST_USING_STD_MIN();
         BOOST_USING_STD_MAX();
         using std::pow;
-
-        dt *= max
+        time_type factor;
+        factor = max
             BOOST_PREVENT_MACRO_SUBSTITUTION(
                 static_cast<value_type>(static_cast<value_type>(9) / static_cast<value_type>(10) *
                     pow(error, static_cast<value_type>(-1) / (stepper_order))),
                 static_cast<value_type>(static_cast<value_type>(1) / static_cast<value_type> (5)));
+        factor = std::min(factor, 10.0);
+        dt *= factor;
         if (m_max_dt != static_cast<time_type>(0))
             // limit to maximal stepsize even when decreasing
             dt = detail::min_abs(dt, m_max_dt);
@@ -380,17 +470,17 @@ public:
         m_stepper.do_step(system, in, dxdt_in, t, out, dxdt_out, dt, m_xerr.m_v);
 
         // this potentially overwrites m_x_err! (standard_error_checker does, at least)
-        value_type max_rel_err = m_error_checker.error(m_stepper.algebra(), in, dxdt_in, m_xerr.m_v, dt);
+        value_type max_rel_err = m_error_checker.error(m_stepper.algebra(), in, out, m_xerr.m_v, dt);
 
         if (max_rel_err > 1.0)
         {
             // error too big, decrease step size and reject this step
-            dt = step_adjuster.decrease_step(dt, max_rel_err, m_stepper.stepper_order());
+            dt = step_adjuster.adjust_step(dt, max_rel_err, m_stepper.stepper_order());
             return fail;
         }
         // otherwise, increase step size and accept
         t += dt;
-        dt = step_adjuster.increase_step(dt, max_rel_err, m_stepper.stepper_order());
+        dt = step_adjuster.adjust_step(dt, max_rel_err, m_stepper.stepper_order());
         return success;
     }
 

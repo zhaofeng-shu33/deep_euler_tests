@@ -8,7 +8,7 @@
 using namespace boost::numeric::odeint;
 typedef std::vector< double > state_type;
 typedef runge_kutta_dopri5< state_type > error_stepper_type;
-typedef custom_controlled_runge_kutta< error_stepper_type, default_error_checker< double, range_algebra, default_operations >, custom_step_adjuster<double, double>> controlled_stepper_type;
+typedef custom_controlled_runge_kutta< error_stepper_type, custom_error_checker< double, range_algebra, default_operations >, custom_step_adjuster<double, double>> controlled_stepper_type;
 
 /* The rhs of x' = f(x) */
 void harmonic_oscillator(const state_type& x, state_type& dxdt, const double t)
@@ -34,8 +34,8 @@ struct push_back_state_and_time
 
 
 int main() {
-    const double y1_0 = 1 / pow(3.0, 2.0 / 3) / tgamma(2.0 / 3);
-    const double y0_0 = -1 / pow(3.0, 1.0 / 3) / tgamma(1.0 / 3);
+    const double y1_0 = 1 / std::pow(3.0, 2.0 / 3) / tgamma(2.0 / 3);
+    const double y0_0 = -1 / std::pow(3.0, 1.0 / 3) / tgamma(1.0 / 3);
     state_type y(2);
     y[0] = y0_0; // initial value
     y[1] = y1_0;
@@ -45,11 +45,11 @@ int main() {
     std::vector<double> times;
 
     controlled_stepper_type controlled_stepper(
-        default_error_checker< double, range_algebra, default_operations >(abs_err, rel_err, a_x, a_dxdt),
+        custom_error_checker< double, range_algebra, default_operations >(abs_err, rel_err, a_x, a_dxdt),
         custom_step_adjuster<double, double>(max_dt));
     double initial_step = select_initial_step(harmonic_oscillator, t_start, y, controlled_stepper.stepper().error_order(), rel_err, abs_err);
     size_t steps = integrate_adaptive(controlled_stepper, harmonic_oscillator,
-        y, t_start, t_end, 0.1, push_back_state_and_time(x_vec, times));
+        y, t_start, t_end, initial_step, push_back_state_and_time(x_vec, times));
     /* output */
     for (size_t i = 0; i <= steps; i++)
     {
