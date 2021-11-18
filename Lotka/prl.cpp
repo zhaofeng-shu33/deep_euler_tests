@@ -1,5 +1,6 @@
 #include <boost/numeric/odeint.hpp>
 #include <boost/math/special_functions/gamma.hpp>
+#include <boost/program_options.hpp>
 #include <iostream>
 #include <vector>
 #include <chrono>
@@ -35,17 +36,31 @@ struct push_back_state_and_time
 };
 
 
-int main() {
+int main(int argc, const char* argv[]) {
+    boost::program_options::options_description desc;
+    desc.add_options()
+        ("help,h", "Show this help screen")
+        ("use_nn", boost::program_options::value<bool>()->implicit_value(true)->default_value(false), "whether to use NN controller")
+        ("atol", boost::program_options::value<double>()->default_value(1.0e-6), "absolute tolerance");
+
+    boost::program_options::variables_map vm;
+    boost::program_options::store(boost::program_options::parse_command_line(argc, argv, desc), vm);
+    boost::program_options::notify(vm);
+    if (vm.count("help")) {
+        std::cout << desc << '\n';
+        return 0;
+    }
+    bool use_nn = vm["use_nn"].as<bool>();
+    double abs_err = vm["atol"].as<double>();
     const double y1_0 = 0.0;
     const double y0_0 = 0.0;
     state_type y(2);
     y[0] = y0_0; // initial value
     y[1] = y1_0;
-    double abs_err = 1.0e-6, rel_err = 0.0, a_x = 1.0, a_dxdt = 0.0, max_dt = 100.0;
+    double rel_err = 0.0, a_x = 1.0, a_dxdt = 0.0, max_dt = 100.0;
     double t_start = 0.0, t_end = 2 * M_PI;
     std::vector<state_type> x_vec;
     std::vector<double> times;
-    bool use_nn = false;
     controlled_stepper_type controlled_stepper(
         custom_error_checker< double, range_algebra, default_operations >(abs_err, rel_err, a_x, a_dxdt),
         custom_step_adjuster<double, double>(max_dt),
@@ -68,9 +83,10 @@ int main() {
     }
     double average_time = int_ns * 1.0 / repeat_time;
     /* output */
-    for (size_t i = 0; i <= steps; i++)
+    /*for (size_t i = 0; i <= steps; i++)
     {
         std::cout << std::setprecision(7) << times[i] << '\t' << x_vec[i][0] << '\t' << x_vec[i][1] << '\n';
     }
+    */
     std::cout << average_time << std::endl;
 }

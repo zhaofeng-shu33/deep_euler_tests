@@ -29,6 +29,7 @@ find_package(ZLIB REQUIRED)
 include_directories(${ZLIB_INCLUDE_DIRS})
 target_include_directories(PRL PUBLIC ${Boost_INCLUDE_DIRS})
 target_link_libraries(PRL PRIVATE ZLIB::ZLIB)
+target_link_libraries(PRL PRIVATE Boost::program_options)
 set_property(TARGET PRL PROPERTY CXX_STANDARD 14)
 
 # The following code block is suggested to be used on Windows.
