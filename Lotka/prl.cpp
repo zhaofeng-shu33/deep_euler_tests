@@ -11,8 +11,8 @@
 
 using namespace boost::numeric::odeint;
 typedef std::vector< double > state_type;
-typedef runge_kutta_dopri5< state_type > error_stepper_type;
-typedef custom_controlled_runge_kutta< error_stepper_type, custom_error_checker< double, range_algebra, default_operations >, custom_step_adjuster<double, double>> controlled_stepper_type;
+typedef custom_controlled_runge_kutta< runge_kutta_dopri5< state_type >, custom_error_checker< double, range_algebra, default_operations >, custom_step_adjuster<double, double>> RK45;
+typedef custom_controlled_runge_kutta< runge_kutta_bs3< state_type >, custom_error_checker< double, range_algebra, default_operations >, custom_step_adjuster<double, double>> RK23;
 
 /* The rhs of x' = f(x) */
 void spiral_problem(const state_type& x, state_type& dxdt, const double t)
@@ -42,6 +42,7 @@ int main(int argc, const char* argv[]) {
     desc.add_options()
         ("help,h", "Show this help screen")
         ("use_nn", boost::program_options::value<bool>()->implicit_value(true)->default_value(false), "whether to use NN controller")
+        ("method", boost::program_options::value<std::string>()->default_value("DP5"), "ode method in use")
         ("atol", boost::program_options::value<double>()->default_value(1.0e-6), "absolute tolerance");
 
     boost::program_options::variables_map vm;
@@ -53,6 +54,7 @@ int main(int argc, const char* argv[]) {
     }
     bool use_nn = vm["use_nn"].as<bool>();
     double abs_err = vm["atol"].as<double>();
+    std::string method_name = vm["method"].as<std::string>();
     const double y1_0 = 0.0;
     const double y0_0 = 0.0;
     state_type y(2);
@@ -62,29 +64,50 @@ int main(int argc, const char* argv[]) {
     double t_start = 0.0, t_end = 2 * M_PI;
     std::vector<state_type> x_vec;
     std::vector<double> times;
-    dense_output_runge_kutta<controlled_stepper_type> dense; // use dense to get a ground truth solution to compute error
-    controlled_stepper_type controlled_stepper(
+    RK45 rk45_solver(
         custom_error_checker< double, range_algebra, default_operations >(abs_err, rel_err, a_x, a_dxdt),
         custom_step_adjuster<double, double>(max_dt),
-        controlled_stepper_type::stepper_type(),
+        RK45::stepper_type(),
         use_nn);
-    double initial_step = select_initial_step(spiral_problem, t_start, y, controlled_stepper.stepper().error_order(), rel_err, abs_err);
-    dense.initialize(y, t_start, initial_step);
-    std::pair< double, double > _times = dense.do_step(spiral_problem);
-
-    size_t steps = integrate_adaptive(controlled_stepper, spiral_problem,
-        y, t_start, t_end, initial_step, push_back_state_and_time(x_vec, times));
+    RK23 rk23_solver(
+        custom_error_checker< double, range_algebra, default_operations >(abs_err, rel_err, a_x, a_dxdt),
+        custom_step_adjuster<double, double>(max_dt),
+        RK23::stepper_type(),
+        use_nn);
+    double initial_step;
     size_t repeat_time = 1000;
-
     long int_ns = 0;
-    for (int i = 0; i < repeat_time; i++) {
-        y[0] = y0_0; // reset initial value
-        y[1] = y1_0;
-        auto t1 = std::chrono::high_resolution_clock::now();
-        steps = integrate_adaptive(controlled_stepper, spiral_problem,
-            y, t_start, t_end, initial_step);
-        auto t2 = std::chrono::high_resolution_clock::now();
-        int_ns += std::chrono::duration_cast<std::chrono::microseconds>(t2 - t1).count();
+    if (method_name == "DP5") {
+        initial_step = select_initial_step(spiral_problem, t_start, y, rk45_solver.stepper().error_order(), rel_err, abs_err);
+
+        size_t steps = integrate_adaptive(rk45_solver, spiral_problem,
+            y, t_start, t_end, initial_step, push_back_state_and_time(x_vec, times));
+
+        for (int i = 0; i < repeat_time; i++) {
+            y[0] = y0_0; // reset initial value
+            y[1] = y1_0;
+            auto t1 = std::chrono::high_resolution_clock::now();
+            steps = integrate_adaptive(rk45_solver, spiral_problem,
+                y, t_start, t_end, initial_step);
+            auto t2 = std::chrono::high_resolution_clock::now();
+            int_ns += std::chrono::duration_cast<std::chrono::microseconds>(t2 - t1).count();
+        }
+    }
+    else { // BS3 currently
+        initial_step = select_initial_step(spiral_problem, t_start, y, rk23_solver.stepper().error_order(), rel_err, abs_err);
+
+        size_t steps = integrate_adaptive(rk23_solver, spiral_problem,
+            y, t_start, t_end, initial_step, push_back_state_and_time(x_vec, times));
+
+        for (int i = 0; i < repeat_time; i++) {
+            y[0] = y0_0; // reset initial value
+            y[1] = y1_0;
+            auto t1 = std::chrono::high_resolution_clock::now();
+            steps = integrate_adaptive(rk23_solver, spiral_problem,
+                y, t_start, t_end, initial_step);
+            auto t2 = std::chrono::high_resolution_clock::now();
+            int_ns += std::chrono::duration_cast<std::chrono::microseconds>(t2 - t1).count();
+        }
     }
     double average_time = int_ns * 1.0 / repeat_time;
     /* output */

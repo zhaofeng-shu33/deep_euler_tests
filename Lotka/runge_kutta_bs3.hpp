@@ -123,7 +123,7 @@ public :
 
         sys( m_x_tmp.m_v , m_k3.m_v , t + dt*a3 );
         // m_x_tmp = x + dt * (b41*dxdt + b42*m_k2 + b43*m_k3)
-        stepper_base_type::m_algebra.for_each5( m_x_tmp.m_v , in , dxdt_in , m_k2.m_v , m_k3.m_v ,
+        stepper_base_type::m_algebra.for_each5( out , in , dxdt_in , m_k2.m_v , m_k3.m_v ,
                 typename operations_type::template scale_sum4< value_type , time_type , time_type , time_type >( 1.0 , dt*b41 , dt*b42 , dt*b43 ));
 
 
@@ -153,7 +153,7 @@ public :
             boost::numeric::odeint::copy( dxdt_in , m_dxdt_tmp.m_v );
             do_step_impl( system , in , dxdt_in , t , out , dxdt_out , dt );
             //error estimate
-            stepper_base_type::m_algebra.for_each5( xerr , m_dxdt_tmp.m_v , m_k2.m_v , m_k3.m_v, dxdt_out ,
+            stepper_base_type::m_algebra.for_each5( xerr , dxdt_in, m_k2.m_v , m_k3.m_v, dxdt_out ,
                                                     typename operations_type::template scale_sum4< time_type , time_type , time_type , time_type>( dt*dc1 , dt*dc2, dt*dc3 , dt*dc4) );
 
         }
