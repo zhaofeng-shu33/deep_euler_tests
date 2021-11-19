@@ -41,7 +41,7 @@ int main(int argc, const char* argv[]) {
     boost::program_options::options_description desc;
     desc.add_options()
         ("help,h", "Show this help screen")
-        ("use_nn", boost::program_options::value<bool>()->implicit_value(true)->default_value(false), "whether to use NN controller")
+        ("model_file_name", boost::program_options::value<std::string>()->default_value(""), "NN controller file name, leave empty if not used")
         ("method", boost::program_options::value<std::string>()->default_value("DP5"), "ode method in use")
         ("atol", boost::program_options::value<double>()->default_value(1.0e-6), "absolute tolerance");
 
@@ -52,7 +52,7 @@ int main(int argc, const char* argv[]) {
         std::cout << desc << '\n';
         return 0;
     }
-    bool use_nn = vm["use_nn"].as<bool>();
+    std::string model_file_name = vm["model_file_name"].as<std::string>();
     double abs_err = vm["atol"].as<double>();
     std::string method_name = vm["method"].as<std::string>();
     const double y1_0 = 0.0;
@@ -68,12 +68,12 @@ int main(int argc, const char* argv[]) {
         custom_error_checker< double, range_algebra, default_operations >(abs_err, rel_err, a_x, a_dxdt),
         custom_step_adjuster<double, double>(max_dt),
         RK45::stepper_type(),
-        use_nn);
+        model_file_name);
     RK23 rk23_solver(
         custom_error_checker< double, range_algebra, default_operations >(abs_err, rel_err, a_x, a_dxdt),
         custom_step_adjuster<double, double>(max_dt),
         RK23::stepper_type(),
-        use_nn);
+        model_file_name);
     double initial_step;
     size_t repeat_time = 1000;
     long int_ns = 0;

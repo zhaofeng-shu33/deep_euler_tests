@@ -289,14 +289,15 @@ public:
         const error_checker_type& error_checker = error_checker_type(),
         const step_adjuster_type& step_adjuster = step_adjuster_type(),
         const stepper_type& stepper = stepper_type(),
-        bool use_nn = false
+        std::string model_file_name = ""
     )
         : m_stepper(stepper), m_error_checker(error_checker), m_step_adjuster(step_adjuster),
-        m_first_call(true), m_use_nn(use_nn)
-    { 
+        m_first_call(true)
+    {
+        m_use_nn = !(model_file_name == "");
         if (m_use_nn) {
             // construct W1, b1, W2, b2
-            cnpy::npz_t _npz = cnpy::npz_load("model-NNController-DP5-Spiral-IController-2021-11-17-6400.npz");
+            cnpy::npz_t _npz = cnpy::npz_load(model_file_name);
             size_t input_size = _npz["W1"].shape[1];
             hidden_num = _npz["b1"].shape[0];
             double* _W1 = _npz["W1"].data<double>();
