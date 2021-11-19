@@ -7,6 +7,7 @@
 #define _USE_MATH_DEFINES
 #include <math.h>
 #include "step_adjuster.hpp"
+#include "runge_kutta_bs3.hpp"
 
 using namespace boost::numeric::odeint;
 typedef std::vector< double > state_type;
@@ -61,12 +62,16 @@ int main(int argc, const char* argv[]) {
     double t_start = 0.0, t_end = 2 * M_PI;
     std::vector<state_type> x_vec;
     std::vector<double> times;
+    dense_output_runge_kutta<controlled_stepper_type> dense; // use dense to get a ground truth solution to compute error
     controlled_stepper_type controlled_stepper(
         custom_error_checker< double, range_algebra, default_operations >(abs_err, rel_err, a_x, a_dxdt),
         custom_step_adjuster<double, double>(max_dt),
         controlled_stepper_type::stepper_type(),
         use_nn);
     double initial_step = select_initial_step(spiral_problem, t_start, y, controlled_stepper.stepper().error_order(), rel_err, abs_err);
+    dense.initialize(y, t_start, initial_step);
+    std::pair< double, double > _times = dense.do_step(spiral_problem);
+
     size_t steps = integrate_adaptive(controlled_stepper, spiral_problem,
         y, t_start, t_end, initial_step, push_back_state_and_time(x_vec, times));
     size_t repeat_time = 1000;
