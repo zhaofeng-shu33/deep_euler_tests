@@ -49,7 +49,7 @@ int main(int argc, const char* argv[]) {
         ("help,h", "Show this help screen")
         ("model_file_name", boost::program_options::value<std::string>()->default_value(""), "NN controller file name, leave empty if not used")
         ("method", boost::program_options::value<std::string>()->default_value("DP5"), "ode method in use, support DP5 or BS3")
-        ("problem", boost::program_options::value<std::string>()->default_value("spiral"), "problem to solve, support spiral or lotka_volterra")
+        ("problem", boost::program_options::value<std::string>()->default_value("Spiral"), "problem to solve, support spiral or lotka_volterra")
         ("atol", boost::program_options::value<double>()->default_value(1.0e-6), "absolute tolerance");
 
     boost::program_options::variables_map vm;
@@ -83,7 +83,7 @@ int main(int argc, const char* argv[]) {
     size_t repeat_time = 1000;
     long int_ns = 0;
     void (*problem)(const state_type&, state_type&, const double);
-    if (problem_name == "spiral") {
+    if (problem_name == "Spiral") {
         problem = &spiral_problem;
         t_end = 2 * M_PI;
         y0_0 = 0.0; // initial value
