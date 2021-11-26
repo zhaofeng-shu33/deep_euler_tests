@@ -21,6 +21,12 @@ void spiral_problem(const state_type& x, state_type& dxdt, const double t)
     dxdt[1] = std::sin(t) + x[0];
 }
 
+void lotka_volterra_problem(const state_type& x, state_type& dxdt, const double t)
+{
+    dxdt[0] = x[0] * (1 - x[1]);
+    dxdt[1] = -x[1] * (1 - x[0]);
+}
+
 struct push_back_state_and_time
 {
     std::vector< state_type >& m_states;
@@ -42,7 +48,8 @@ int main(int argc, const char* argv[]) {
     desc.add_options()
         ("help,h", "Show this help screen")
         ("model_file_name", boost::program_options::value<std::string>()->default_value(""), "NN controller file name, leave empty if not used")
-        ("method", boost::program_options::value<std::string>()->default_value("DP5"), "ode method in use")
+        ("method", boost::program_options::value<std::string>()->default_value("DP5"), "ode method in use, support DP5 or BS3")
+        ("problem", boost::program_options::value<std::string>()->default_value("spiral"), "problem to solve, support spiral or lotka_volterra")
         ("atol", boost::program_options::value<double>()->default_value(1.0e-6), "absolute tolerance");
 
     boost::program_options::variables_map vm;
@@ -55,13 +62,11 @@ int main(int argc, const char* argv[]) {
     std::string model_file_name = vm["model_file_name"].as<std::string>();
     double abs_err = vm["atol"].as<double>();
     std::string method_name = vm["method"].as<std::string>();
-    const double y1_0 = 0.0;
-    const double y0_0 = 0.0;
+    std::string problem_name = vm["problem"].as<std::string>();
     state_type y(2);
-    y[0] = y0_0; // initial value
-    y[1] = y1_0;
+
     double rel_err = 0.0, a_x = 1.0, a_dxdt = 0.0, max_dt = 100.0;
-    double t_start = 0.0, t_end = 2 * M_PI;
+    double t_start = 0.0, t_end, y0_0, y1_0;
     std::vector<state_type> x_vec;
     std::vector<double> times;
     RK45 rk45_solver(
@@ -77,33 +82,48 @@ int main(int argc, const char* argv[]) {
     double initial_step;
     size_t repeat_time = 1000;
     long int_ns = 0;
+    void (*problem)(const state_type&, state_type&, const double);
+    if (problem_name == "spiral") {
+        problem = &spiral_problem;
+        t_end = 2 * M_PI;
+        y0_0 = 0.0; // initial value
+        y1_0 = 0.0;
+    }
+    else {
+        problem = &lotka_volterra_problem;
+        t_end = 15.0;
+        y0_0 = 2.0; // initial value
+        y1_0 = 1.0;
+    }
+    y[0] = y0_0;
+    y[1] = y1_0;
     if (method_name == "DP5") {
-        initial_step = select_initial_step(spiral_problem, t_start, y, rk45_solver.stepper().error_order(), rel_err, abs_err);
+        initial_step = select_initial_step(problem, t_start, y, rk45_solver.stepper().error_order(), rel_err, abs_err);
 
-        size_t steps = integrate_adaptive(rk45_solver, spiral_problem,
+        size_t steps = integrate_adaptive(rk45_solver, problem,
             y, t_start, t_end, initial_step, push_back_state_and_time(x_vec, times));
 
         for (int i = 0; i < repeat_time; i++) {
             y[0] = y0_0; // reset initial value
             y[1] = y1_0;
             auto t1 = std::chrono::high_resolution_clock::now();
-            steps = integrate_adaptive(rk45_solver, spiral_problem,
+            steps = integrate_adaptive(rk45_solver, problem,
                 y, t_start, t_end, initial_step);
             auto t2 = std::chrono::high_resolution_clock::now();
             int_ns += std::chrono::duration_cast<std::chrono::microseconds>(t2 - t1).count();
         }
     }
     else { // BS3 currently
-        initial_step = select_initial_step(spiral_problem, t_start, y, rk23_solver.stepper().error_order(), rel_err, abs_err);
+        initial_step = select_initial_step(problem, t_start, y, rk23_solver.stepper().error_order(), rel_err, abs_err);
 
-        size_t steps = integrate_adaptive(rk23_solver, spiral_problem,
+        size_t steps = integrate_adaptive(rk23_solver, problem,
             y, t_start, t_end, initial_step, push_back_state_and_time(x_vec, times));
 
         for (int i = 0; i < repeat_time; i++) {
             y[0] = y0_0; // reset initial value
             y[1] = y1_0;
             auto t1 = std::chrono::high_resolution_clock::now();
-            steps = integrate_adaptive(rk23_solver, spiral_problem,
+            steps = integrate_adaptive(rk23_solver, problem,
                 y, t_start, t_end, initial_step);
             auto t2 = std::chrono::high_resolution_clock::now();
             int_ns += std::chrono::duration_cast<std::chrono::microseconds>(t2 - t1).count();

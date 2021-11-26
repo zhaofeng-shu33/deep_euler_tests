@@ -174,6 +174,7 @@ private:
 
 };
 
+// standard IController
 template< typename Value, typename Time >
 class custom_step_adjuster
 {
