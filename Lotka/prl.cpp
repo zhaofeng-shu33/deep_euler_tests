@@ -27,6 +27,12 @@ void lotka_volterra_problem(const state_type& x, state_type& dxdt, const double 
     dxdt[1] = -x[1] * (1 - x[0]);
 }
 
+void brusselator_problem(const state_type& x, state_type& dxdt, const double t)
+{
+    dxdt[0] = 1 + x[0] * x[0] * x[1] - 4 * x[0];
+    dxdt[1] = 3 * x[0] - x[0] * x[0] * x[1];
+}
+
 struct push_back_state_and_time
 {
     std::vector< state_type >& m_states;
@@ -89,11 +95,17 @@ int main(int argc, const char* argv[]) {
         y0_0 = 0.0; // initial value
         y1_0 = 0.0;
     }
-    else {
+    else if (problem_name == "LotkaVolterra") {
         problem = &lotka_volterra_problem;
         t_end = 15.0;
         y0_0 = 2.0; // initial value
         y1_0 = 1.0;
+    }
+    else {
+        problem = &brusselator_problem;
+        t_end = 20.0;
+        y0_0 = 1.5; // initial value
+        y1_0 = 3.0;
     }
     y[0] = y0_0;
     y[1] = y1_0;
