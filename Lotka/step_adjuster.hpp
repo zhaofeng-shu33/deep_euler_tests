@@ -290,10 +290,11 @@ public:
         const error_checker_type& error_checker = error_checker_type(),
         const step_adjuster_type& step_adjuster = step_adjuster_type(),
         const stepper_type& stepper = stepper_type(),
-        std::string model_file_name = ""
+        std::string model_file_name = "",
+        bool is_fixed_stepsize = false
     )
         : m_stepper(stepper), m_error_checker(error_checker), m_step_adjuster(step_adjuster),
-        m_first_call(true)
+        m_first_call(true), fixed_stepsize(is_fixed_stepsize)
     {
         m_use_nn = !(model_file_name == "");
         if (m_use_nn) {
@@ -304,16 +305,17 @@ public:
             double* _W1 = _npz["W1"].data<double>();
             double* _W2 = _npz["W2"].data<double>();
             double* _b1 = _npz["b1"].data<double>();
-            // W1.resize(w1_size);
-            // W2.resize(hidden_num);
-            // b1.resize(hidden_num);
             b2 = *_npz["b2"].data<double>();
+            if (_npz.count("k") > 0) {
+                k = *_npz["k"].data<double>();
+            }
+            else {
+                k = -1.0;
+            }
+
             std::copy(_W1, _W1 + w1_size, back_inserter(W1));
             std::copy(_W2, _W2 + hidden_num, back_inserter(W2));
             std::copy(_b1, _b1 + hidden_num, back_inserter(b1));
-            // memcpy(W1, _npz["W1"].data<double>(), (input_size * hidden_num) * sizeof(double));
-            // memcpy(W2, _npz["W2"].data<double>(), hidden_num * sizeof(double));
-            // memcpy(b1, _npz["b1"].data<double>(), hidden_num * sizeof(double));
 
             tmp_vec.resize(hidden_num);
         }
@@ -491,7 +493,7 @@ public:
         }
         value_type max_rel_err;
         time_type dt_tmp;
-        if (!m_use_nn) {
+        if (!m_use_nn && !fixed_stepsize) {
             m_xerr_resizer.adjust_size(in, detail::bind(&custom_controlled_runge_kutta::template resize_m_xerr_impl< StateIn >, detail::ref(*this), detail::_1));
 
             //fsal: m_stepper.get_dxdt( dxdt );
@@ -508,10 +510,10 @@ public:
                 return fail;
             }
         }
-        else {
+        else if(!fixed_stepsize) {
 
             input_vec[0] = t;
-            for (int i = 1; i <= m - 2; i++)
+            for (int i = 1; i <= in.size(); i++)
                 input_vec[i] = in[i - 1];
             
 
@@ -529,14 +531,19 @@ public:
                 tmp_vec[i] = 0;
             }
             dt_tmp += b2;
+            if (k > 0) {
+                dt_tmp += k * std::log(m_error_checker.eps_abs());
+            }
             dt = std::exp(dt_tmp);
             m_stepper.do_step(system, in, dxdt_in, t, out, dxdt_out, dt);
 
-
+        }
+        else {
+            m_stepper.do_step(system, in, dxdt_in, t, out, dxdt_out, dt);
         }
         // otherwise, increase step size and accept
         t += dt;
-        if (!m_use_nn) {
+        if (!m_use_nn && !fixed_stepsize) {
             dt = step_adjuster.adjust_step(dt, max_rel_err, m_stepper.stepper_order());
         }
         return success;
@@ -577,9 +584,16 @@ public:
         typename odeint::unwrap_reference< System >::type& sys = system;
         sys(x, m_dxdt.m_v, t);
         size_t n = boost::size(x);
-        m = n + 2;
+        if (k < 0) {
+            m = n + 2;
+        }
+        else {
+            m = n + 1;
+        }
         input_vec.resize(m);
-        input_vec[m - 1] = std::log(m_error_checker.eps_abs());
+        if (k < 0) {
+            input_vec[m - 1] = std::log(m_error_checker.eps_abs());
+        }
         m_first_call = false;
     }
 
@@ -683,12 +697,14 @@ private:
     wrapped_deriv_type m_dxdtnew;
     bool m_first_call;
     bool m_use_nn;
+    bool fixed_stepsize;
     size_t hidden_num;
     size_t m;
     std::vector<double> W1;
     std::vector<double> W2;
     std::vector<double> b1;
     double b2;
+    double k;
     std::vector<double> input_vec;
     std::vector<double> tmp_vec;
 };

@@ -56,7 +56,8 @@ int main(int argc, const char* argv[]) {
         ("model_file_name", boost::program_options::value<std::string>()->default_value(""), "NN controller file name, leave empty if not used")
         ("method", boost::program_options::value<std::string>()->default_value("DP5"), "ode method in use, support DP5 or BS3")
         ("problem", boost::program_options::value<std::string>()->default_value("Spiral"), "problem to solve, support spiral or lotka_volterra")
-        ("atol", boost::program_options::value<double>()->default_value(1.0e-6), "absolute tolerance");
+        ("is_fixed", "using fixed method")
+        ("atol", boost::program_options::value<double>()->default_value(1.0e-6), "absolute tolerance or stepsize when is_fixed is specified");
 
     boost::program_options::variables_map vm;
     boost::program_options::store(boost::program_options::parse_command_line(argc, argv, desc), vm);
@@ -67,6 +68,7 @@ int main(int argc, const char* argv[]) {
     }
     std::string model_file_name = vm["model_file_name"].as<std::string>();
     double abs_err = vm["atol"].as<double>();
+    bool is_fixed = vm.count("is_fixed") > 0;
     std::string method_name = vm["method"].as<std::string>();
     std::string problem_name = vm["problem"].as<std::string>();
     state_type y(2);
@@ -79,12 +81,12 @@ int main(int argc, const char* argv[]) {
         custom_error_checker< double, range_algebra, default_operations >(abs_err, rel_err, a_x, a_dxdt),
         custom_step_adjuster<double, double>(max_dt),
         RK45::stepper_type(),
-        model_file_name);
+        model_file_name, is_fixed);
     RK23 rk23_solver(
         custom_error_checker< double, range_algebra, default_operations >(abs_err, rel_err, a_x, a_dxdt),
         custom_step_adjuster<double, double>(max_dt),
         RK23::stepper_type(),
-        model_file_name);
+        model_file_name, is_fixed);
     double initial_step;
     size_t repeat_time = 1000;
     long int_ns = 0;
@@ -110,7 +112,12 @@ int main(int argc, const char* argv[]) {
     y[0] = y0_0;
     y[1] = y1_0;
     if (method_name == "DP5") {
-        initial_step = select_initial_step(problem, t_start, y, rk45_solver.stepper().error_order(), rel_err, abs_err);
+        if (is_fixed) {
+            initial_step = abs_err;
+        }
+        else {
+            initial_step = select_initial_step(problem, t_start, y, rk45_solver.stepper().error_order(), rel_err, abs_err);
+        }
 
         size_t steps = integrate_adaptive(rk45_solver, problem,
             y, t_start, t_end, initial_step, push_back_state_and_time(x_vec, times));
@@ -126,8 +133,13 @@ int main(int argc, const char* argv[]) {
         }
     }
     else { // BS3 currently
-        initial_step = select_initial_step(problem, t_start, y, rk23_solver.stepper().error_order(), rel_err, abs_err);
 
+        if (is_fixed) {
+            initial_step = abs_err;
+        }
+        else {
+            initial_step = select_initial_step(problem, t_start, y, rk23_solver.stepper().error_order(), rel_err, abs_err);
+        }
         size_t steps = integrate_adaptive(rk23_solver, problem,
             y, t_start, t_end, initial_step, push_back_state_and_time(x_vec, times));
 
